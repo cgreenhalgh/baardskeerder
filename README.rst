@@ -1,6 +1,13 @@
 =============
 Baardskeerder
 =============
+
+This fork is intended for a variant of Baardskeerder to run on 
+Mirage_. The persistent back-end
+is intended to be a Mirage OS.Devices.blkif and an API facade is intended to 
+provide a mutable key-value API analogous to OS.Devices.kv_ro. Status is just
+starting; some delta are likely to be from this variant_.
+
 Baardskeerder is a so-called Copy-on-Write B-tree_ (aka Append-only B-tree),
 a fully-persistent datastructure which can be implemented using nothing but
 append writes towards the storage medium on which the data is stored.
@@ -16,6 +23,8 @@ compatibility) before the first version is released,...
 
 .. _B-tree: http://en.wikipedia.org/wiki/B-tree
 .. _fully-persistent: http://en.wikipedia.org/wiki/Persistent_data_structure
+.. _Mirage: https://github.com/mirage/mirage-platform
+.. _variant: https://github.com/djs55/mirage/commits/baardskeerder/lib/btree
 
 Getting Started
 ===============
