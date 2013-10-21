@@ -13,5 +13,6 @@ true: package(lwt.preemptive)
 <bsmgr.{native,byte}>: link_libbaardskeerder
 <baardskeerder.cma>: use_libbaardskeerder, link_libbaardskeerder
 <hudson_xml.{*}>: package(oUnit)
+<blkif.*>: package(mirage), package(unix-simple-blkdev), package(cstruct)
 
 <*_demo.*>: package(unix), package(oUnit), use_libbaardskeerder, link_libbaardskeerder

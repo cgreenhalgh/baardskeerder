@@ -53,6 +53,7 @@ let get_store = function
   | "Lwt" ->
     (* let () = Lwt_unix.set_default_async_method Lwt_unix.Async_none in *)
     (module Store.Lwt : MS)
+  | "Blkif" -> (module Blkif.Store : MS)
   | _ -> invalid_arg "get_store"
 
 let () =
