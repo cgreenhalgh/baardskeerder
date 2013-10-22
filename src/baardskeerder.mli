@@ -54,6 +54,11 @@ sig
   module Lwt : Bs_internal.STORE with type 'a m = 'a Lwt.t
 end
 
+module Blkif :
+sig
+  module Store : Bs_internal.STORE with type 'a m = 'a Lwt.t
+end
+
 module Pack :
 sig
   type output

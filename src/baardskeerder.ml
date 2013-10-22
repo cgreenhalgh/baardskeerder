@@ -33,7 +33,10 @@ struct
   module Lwt = Store.Lwt
 end
 
-
+module Blkif =
+struct 
+  module Store = Blkif.Store
+end
 
 
 module Baardskeerder
