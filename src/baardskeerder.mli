@@ -42,7 +42,8 @@ val delete: tx -> k -> (unit,k) result
 
 module Logs :
 sig
-  module Flog : functor(S: Bs_internal.STORE) -> Log.LOG with type 'a m = 'a S.m
+  (*module Flog : functor(S: Bs_internal.STORE) -> Log.LOG with type 'a m = 'a
+   * S.m*)
   module Flog0 : functor(S: Bs_internal.STORE) -> Log.LOG with type 'a m = 'a S.m
 end
 

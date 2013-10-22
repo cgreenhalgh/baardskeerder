@@ -105,6 +105,7 @@ let pu_commit() =
   let () = OUnit.assert_equal ~printer:Commit.commit2s c0 c1 in
   ()
 
+(*
 let test_metadata () =
   MF.init "test_metadata.db" Time.zero;
   let db = MF.make "test_metadata.db" in
@@ -130,7 +131,7 @@ let test_metadata () =
                     MF.close db;
 
                     Unix.unlink "test_metadata.db"
-
+*)
 
 let test_remake () =
   let fn = "test_remake.db" in
@@ -159,6 +160,6 @@ let suite =
     "pu_leaf" >:: pu_leaf;
     "pu_index" >:: pu_index;
     "pu_commit" >:: pu_commit;
-    "metadata" >:: test_metadata;
+    (*"metadata" >:: test_metadata;*)
     "remake" >:: test_remake;
   ]

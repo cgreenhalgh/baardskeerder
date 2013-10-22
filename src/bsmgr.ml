@@ -45,7 +45,7 @@ module type LF = functor(S: Bs_internal.STORE) -> Log.LOG with type 'a m = 'a S.
 module type MS = Bs_internal.STORE
 let get_lf = function
   | "Flog0" -> (module Flog0.Flog0 : LF)
-  | "Flog" -> (module Flog.Flog : LF)
+  (*| "Flog" -> (module Flog.Flog : LF)*)
   | _ -> invalid_arg "get_lf"
 
 let get_store = function
@@ -54,6 +54,7 @@ let get_store = function
     (* let () = Lwt_unix.set_default_async_method Lwt_unix.Async_none in *)
     (module Store.Lwt : MS)
   | "Blkif" -> (module Blkif.Store : MS)
+  | "Memory" -> (module Store.Memory : MS)
   | _ -> invalid_arg "get_store"
 
 let () =

@@ -21,10 +21,9 @@ open Store
 
 open Base
 open Entry
-open Unix
 open Pack
 
-
+exception Unsupported of string
 
 module Flog0 =
   functor(S:Bs_internal.STORE) ->
@@ -94,8 +93,20 @@ struct
 
     S.write fd block 0 _METADATA_SIZE 0
 
+  exception Uninitialised
+
+  let is_uninitialised s =
+    let len = String.length s in
+    let rec check s i = 
+      if i >= len then true 
+      else if (String.get s i) != '\000' then false
+      else check s (i+1) in
+    check s 0
+
   let _read_metadata fd =
     S.read fd 0 _METADATA_SIZE >>= fun m ->
+    if is_uninitialised m then 
+      S.fail Uninitialised else S.return () >>= fun () ->
     let input = Pack.make_input m 0 in
     let s = Pack.input_vint input in
     let o = Pack.input_vint input in
@@ -105,7 +116,7 @@ struct
     return {commit; td;t0}
 
   type t = {
-    spindles : S.t array;
+    spindles : (S.t * int ref) array;
     start : Time.t;
     mutable last: (spindle * offset);
     mutable next_spindle: int;
@@ -118,9 +129,9 @@ struct
 
   let t2s t =
     let (Spindle ls, Offset lo) = t.last in
-    let sp = Array.get t.spindles t.next_spindle in
-    Printf.sprintf "{...;last=(%i,%i); next=(%i,%i);now=%s}" ls lo t.next_spindle (S.next sp)
-      (Time.time2s t.now)
+    let (sp,spnext) = Array.get t.spindles t.next_spindle in
+    Printf.sprintf "{...;last=(%i,%i); next=(%i,%i);now=%s}" ls lo
+      t.next_spindle !spnext (Time.time2s t.now)
 
   let last t = let s, o = t.last in Outer (s, o)
 
@@ -131,7 +142,7 @@ struct
 
   let close t =
     let meta = {commit = t.last; td = t.d; t0 = t.start} in
-    M.iter_array (fun s -> _write_metadata s meta >>= fun () -> S.close s) t.spindles
+    M.iter_array (fun (s,snext) -> _write_metadata s meta >>= fun () -> S.close s) t.spindles
 
   let clear t =
     let commit = (Spindle 0, Offset 0) in
@@ -140,7 +151,7 @@ struct
                 t0 = Time.zero;
                }
     in
-    M.iter_array (fun s -> _write_metadata s meta) t.spindles >>= fun () ->
+    M.iter_array (fun (s,snext) -> _write_metadata s meta) t.spindles >>= fun () ->
     t.last  <- commit;
     t.next_spindle <- 0;
     t.now  <- Time.zero;
@@ -231,9 +242,10 @@ struct
 
 
   let dump ?(out=Pervasives.stdout) (t:t) =
-    let d s =
+    let d (s,snext) =
       _read_metadata s >>= fun m ->
       Printf.fprintf out "meta: %s\n%!" (metadata2s m);
+      Printf.fprintf out "next: %d\n%!" !snext;
       let rec loop pos=
         S.read s pos 4 >>= fun ls ->
         let l = size_from ls 0 in
@@ -352,7 +364,8 @@ struct
     let l = Array.length log.spindles in
     let sid = ref log.next_spindle in
     let buffers = Array.init l (fun _ -> Buffer.create 1024) in
-    let starts = Array.init l (fun i -> ref (S.next (Array.get log.spindles i))) in
+    let starts = Array.init l (fun i -> match (Array.get log.spindles i) with
+    _,snext -> let snext' = !snext in ref snext') in
 
     let do_one i e =
       let sid' = !sid in
@@ -369,14 +382,14 @@ struct
 
     M.iteri_array
       (fun i b ->
-        let ss = Buffer.contents b
-        and s = Array.get log.spindles i
-        and n = !(Array.get starts i) in
+        let ss = Buffer.contents b in
+        let slen = String.length ss
+        and s,snext = Array.get log.spindles i in
+        let offset = !snext in
+        (*let n = !(Array.get starts i) in*)
 
-        S.append s ss 0 (String.length ss) >>= fun _ ->
-
-        assert (n = S.next s);
-
+        snext := offset + slen;
+        S.write s ss 0 slen offset >>= fun _ ->
         return ())
       buffers >>= fun () ->
 
@@ -388,7 +401,7 @@ struct
 
 
   let sync t =
-    M.iter_array S.fsync t.spindles
+    M.iter_array (fun (s,_) -> S.fsync s) t.spindles
 
   let compact ?(min_blocks=1) ?(progress_cb=None) (_:t) =
     ignore min_blocks;
@@ -446,7 +459,7 @@ struct
               | Some e -> return e
               | None ->*)
               begin
-                let sp = Array.get t.spindles s in
+                let sp,_ = Array.get t.spindles s in
                 _read_entry_s sp o >>= fun es ->
                 let entry = inflate_entry es in
               (* let () = Cache.add so entry in *)
@@ -462,10 +475,19 @@ struct
       | Commit c -> let lu = Commit.get_lookup c in return lu
       | e -> failwith "can only do commits"
 
+  let _try_read_metadata sp =
+    let handle ex = match ex with 
+      | End_of_file
+      | Uninitialised -> return {commit=(Spindle 0,Offset 0);td=0;t0=Time.zero}
+      | _ -> raise ex in
+    let task () = _read_metadata sp in
+    S.catch task handle
 
   let init ?(d=8) fn t0 =
     S.init fn >>= fun s ->
-    if S.next s = 0
+    _try_read_metadata s >>= fun meta ->
+    let (Spindle ms, Offset mo) = meta.commit in
+    if ms==0 && mo==0 && meta.t0==Time.zero 
     then
       let commit = (Spindle 0, Offset 0) in
       _write_metadata s {commit;td = d; t0} >>= fun () ->
@@ -478,26 +500,24 @@ struct
 
   let make filename =
     S.init filename >>= fun s ->
-    assert (S.next s > 0);
 
-    let spindles = Array.make 1 s in
+    let spindles = Array.make 1 (s,ref 0) in
 
-    let sp0 = Array.get spindles 0 in
+    let (sp0,spl0) = Array.get spindles 0 in
 
     _read_metadata sp0 >>= fun m ->
-    let next_free = S.next sp0 in
     let d = m.td in
     let _try_read_entry sp0 tbr =
-      try
+      let handle ex = match ex with 
+        | End_of_file -> return None
+        | _ -> raise ex in
+      let task () =
         _read_entry_s sp0 tbr >>= fun es ->
-        return (Some es)
-      with End_of_file -> return None
+        if (String.length es)==0 then return None 
+        else return (Some es) in
+      S.catch task handle
     in
-    let rec _scan_forward lt (tbr:int) =
-      if tbr = next_free 
-      then
-        S.return lt
-      else
+    let rec _scan_forward (ltc,ltt,ltn) (tbr:int) =
         begin
           _try_read_entry sp0 tbr >>= fun eso ->
           match eso with
@@ -510,19 +530,22 @@ struct
                     match e with
                       | Commit c ->
                         let time = Commit.get_time c in
-                        (Spindle 0, Offset tbr), time
-                      | e -> lt
+                        (Spindle 0, Offset tbr), time, next
+                      | e -> (ltc, ltt, next)
                   in
                   _scan_forward lt' next
 
                 end
-            | None -> S.return lt
+            | None -> S.return (ltc,ltt,ltn)
         end
     in
     let (_,Offset tbr) = m.commit in
     let corrected_tbr = max _METADATA_SIZE tbr in
 
-    _scan_forward ((Spindle 0, Offset 0),m.t0) corrected_tbr >>= fun (last, now) ->
+    _scan_forward ((Spindle 0, Offset 0),m.t0,corrected_tbr) corrected_tbr >>=
+            fun (last, now, next) ->
+    (* update next *)
+    spl0 := next;
     let flog0 = { spindles=spindles;
                   last=last;
                   next_spindle=0;
@@ -534,39 +557,8 @@ struct
     in
     return flog0
 
-  let set_metadata t s =
-    let f = t.filename ^ ".meta" in
-    let o = f ^ ".new" in
-    let b = Buffer.create 128 in
-    size_to b (String.length s);
-    Buffer.add_string b s;
-    let s' = Buffer.contents b in
-    S.init o >>= fun fd ->
-    S.write fd s' 0 (String.length s') 0 >>= fun () ->
-    S.close fd >>= fun () ->
-    Unix.rename o f;
-    return ()
+   let set_metadata t s = failwith "Flog0.set_metadata"
+   let unset_metadata t = failwith "Flog0.unset_metadata"
+   let get_metadata t = failwith "Flog0.get_metadata"
 
-  let unset_metadata t =
-    let () = try
-               Unix.unlink (t.filename ^ ".meta")
-      with Unix_error (Unix.ENOENT, _, _) -> ()
-    in
-    return ()
-
-  let get_metadata t =
-    let f = t.filename ^ ".meta" in
-    if
-      try
-        let _ = Unix.stat f in true
-      with Unix_error (Unix.ENOENT, _, _) -> false
-        then
-          S.init f >>= fun fd ->
-        S.read fd 0 4 >>= fun d ->
-        let l = size_from d 0 in
-        S.read fd 4 l >>= fun s ->
-        return (Some s)
-        else
-          return None
-
-    end (* module / functor *)
+end (* module / functor *)

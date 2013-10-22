@@ -29,6 +29,8 @@ struct
 
   let bind v f = f v
   let return v = v
+  let fail e = raise e
+  let catch t f = try t () with e -> f e
 
   let init (n:string) =
     let v =
@@ -43,7 +45,7 @@ struct
 
   let close _ = return ()
 
-  let next (T b) = Buffer.length (!b)
+  let next (T b) = failwith "Store.Memory.next"
 
   let read (T b) o l =
     if o < Buffer.length (!b)
@@ -71,10 +73,7 @@ struct
 
     return ()
 
-  let append (T b) d p l =
-    let o = Buffer.length !b in
-    Buffer.add_substring !b d p l;
-    return o
+  let append (T b) d p l = failwith "Store.Memory.append"
 
   let fsync (T _) = return ()
 
@@ -93,6 +92,8 @@ struct
 
   let bind v f = f v
   let return v = v
+  let fail e = raise e
+  let catch t f = try t () with e -> f e
 
   let init name =
     let fd = openfile name [O_RDWR; O_CREAT] 0o640 in
@@ -157,6 +158,8 @@ struct
   type 'a m = 'a Lwt_.t
   let bind = Lwt_.bind
   let return = Lwt_.return
+  let fail = Lwt_.fail
+  let catch = Lwt.catch
 
   let (>>=) = bind
 
@@ -190,7 +193,7 @@ struct
           Lwt_unix_ext.pread fd s o' c (o + o') >>= fun c' ->
           if c' = 0
           then
-            raise End_of_file
+            Lwt_.fail End_of_file
           else
             loop (o' + c') (c - c')
     in

@@ -39,76 +39,113 @@ struct
    * We will also most likely need some kind of cache, as we can 
    * only do writes of pages (4096) which I think are larger than
    * BS's. *)
-  type t = T of Lwt_unix.file_descr * int ref
+  type t = T of OS.Devices.blkif
 
   type 'a m = 'a Lwt_.t
   let bind = Lwt_.bind
   let return = Lwt_.return
+  let fail = Lwt_.fail
+  let catch = Lwt_.catch
 
   let (>>=) = bind
 
   let init name =
     Lwt.catch
       (fun () ->
-        Lwt_unix.openfile name [Lwt_unix.O_RDWR; Lwt_unix.O_CREAT;] 0o640 >>= fun fd ->
-        Lwt_unix.fstat fd >>= fun stat ->
-        let len = stat.st_size in
-
-        Lwt_unix.lseek fd len Lwt_unix.SEEK_SET >>= fun i ->
-        assert (i = len);
-
-        return (T (fd, ref len))
+        Printf.printf "blkif.init %s\n%!" name;
+        Blkdev.create name name >>= fun blkif ->
+        return (T (blkif))
       )
       (fun e ->
         let msg = Printf.sprintf "init %s failed with :%s" name (Printexc.to_string e) in
         Lwt.fail (Failure msg))
 
-  let close (T (fd, _)) =
-    Lwt_unix.close fd
+  let close (T (blkif)) =
+          Printf.printf "blkif.close\n%!";
+          blkif#destroy ;
+          return ()
 
-  let next (T (_, o)) = !o
+  (** from blkif interface - read_512! *)
+  let sectorsize = 512
 
-  let read (T (fd, _)) o l =
-    let s = String.create l in
-
-    let rec loop o' = function
-      | 0 -> return ()
-      | c ->
-          Lwt_unix_ext.pread fd s o' c (o + o') >>= fun c' ->
-          if c' = 0
-          then
-            raise End_of_file
-          else
-            loop (o' + c') (c - c')
+  let read (T (blkif)) offset length =
+    (*Printf.printf "blkif.read %d %d\n%!" offset length;*)
+    let outstring = String.create length in
+    if length==0 then return outstring else
+    let sectorfrom = offset / sectorsize in
+    let sectorto = (offset+length-1) / sectorsize in
+    let cstructs = blkif#read_512 (Int64.of_int sectorfrom)
+        (Int64.of_int (sectorto+1-sectorfrom)) in
+    let rec readcstruct rdoffset outpos = 
+      Lwt_stream.get cstructs >>= fun co -> match co with 
+        | None -> return ()
+        | Some cstruct -> 
+          let max = Cstruct.len cstruct in
+          let from = if rdoffset >= offset then 0 else (offset-rdoffset) in
+          let len = if (rdoffset+max <= offset+length) then 
+                  max-from else (offset+length-rdoffset-from) in
+          (*Printf.printf "get bytes cstruct %d from %d, buf %d at %d, from=%d
+          len=%d\n%!" max rdoffset length outpos from len;*)
+          Cstruct.blit_to_string cstruct from outstring outpos len;
+          readcstruct (rdoffset+max) (outpos+len)
     in
-    loop 0 l >>= fun () ->
-
-    return s
-
-  let write (T (fd, _)) d p l o =
-    let rec loop p' o' = function
-      | 0 -> return ()
-      | c ->
-          Lwt_unix_ext.pwrite fd d p' c o' >>= fun c' ->
-          loop (p' + c') (o' + c') (c - c')
+    readcstruct (sectorfrom*sectorsize) 0 >>= fun () ->
+    return outstring
+  
+  let read_one_page blkif page offset =
+    (*Printf.printf "blkif.read_one_page %d\n%!" offset;*)
+    let sectoroffset = offset / sectorsize in
+    let sectorlength = (OS.Io_page.length page) / sectorsize in
+    let cstructs = blkif#read_512 (Int64.of_int sectoroffset) (Int64.of_int
+    sectorlength) in
+    let pagecstruct = OS.Io_page.to_cstruct page in
+    let rec readcstruct pagepos =
+      Lwt_stream.get cstructs >>= fun co -> match co with
+        | None -> return ()
+        | Some cstruct ->
+          let len = Cstruct.len cstruct in
+          (* assuming pages are multiple of sectors! *)
+          Cstruct.blit cstruct 0 pagecstruct pagepos len;
+          readcstruct (pagepos+len)
     in
-    loop p o l
+    readcstruct 0
 
-  let append (T (fd, o) as t) d p l =
-    let o' = !o in
-
-    write t d p l o' >>= fun () ->
-    o := o' + l;
-    return o'
+  let write (T (blkif)) bufstring bufoffset buflength offset =
+    (*Printf.printf "write %d@%d %d\n%!" buflength bufoffset offset;*)
+    (* break request down to Io_pages *)
+    let pagesize = OS.Io_page.round_to_page_size 1 in
+    let pagefrom = offset / pagesize in
+    let pageto = (offset+buflength-1) / pagesize in
+    let rec writepage pagei =
+      let pagestart = pagei*pagesize in
+      let pageend = pagestart+pagesize in
+      let page = OS.Io_page.get 1 in
+      (if pagestart < offset || pageend > offset+buflength then
+        (* need to read existing page content *)
+        read_one_page blkif page pagestart 
+      else return ()) >>= fun () ->
+      (* copy in new data *)
+      let srcoff = if pagestart > offset then bufoffset+pagestart-offset
+        else bufoffset in
+      let dstoff = if offset > pagestart then offset-pagestart else 0 in
+      let len = min (pagesize-dstoff) (bufoffset+buflength-srcoff) in
+      OS.Io_page.string_blit bufstring srcoff page dstoff len;
+      (*Printf.printf "blkif.write_page %d len %d with new %d+%d from %d\n%!"
+      pagestart (OS.Io_page.length page) dstoff len srcoff;*)
+      blkif#write_page (Int64.of_int pagestart) page >>= fun () ->
+      if pagei >= pageto then return () else
+      writepage (pagei+1)
+    in
+    writepage pagefrom
 
   (* no op *)
-  let fsync (T (fd, _)) = 
+  let fsync (T (blkif)) = 
     return ()
 
   (* this is heavily used in Flog, which basically bypasses the
    * Store API, but isn't used in Flog0, so we'll omit it and stick
    * to Flog0 *)
-   let with_fd (T (fd, _)) f =
+   let with_fd (T (blkif)) f =
      Lwt.fail(Unsupported("blkif.with_fd not supportable"))
 
   let run x = Lwt_main.run x

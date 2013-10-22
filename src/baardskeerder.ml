@@ -22,7 +22,7 @@ include Pack
 
 module Logs =
 struct
-  module Flog = Flog.Flog
+  (*module Flog = Flog.Flog*)
   module Flog0 = Flog0.Flog0
 end
 

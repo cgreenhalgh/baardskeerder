@@ -5,8 +5,12 @@ Baardskeerder
 This fork is intended for a variant of Baardskeerder to run on 
 Mirage_. The persistent back-end
 is intended to be a Mirage OS.Devices.blkif and an API facade is intended to 
-provide a mutable key-value API analogous to OS.Devices.kv_ro. Status is just
-starting; some delta are likely to be from this variant_.
+provide a mutable key-value API analogous to OS.Devices.kv_ro. 
+
+Status is implemented basic store over blkif in src/blkif.ml and ported flog0
+log implementation to work with it. There is no cacheing and the store API
+has been narrowed to remove next, append and with_fd. Flog is currently
+disabled awaiting porting.
 
 Baardskeerder is a so-called Copy-on-Write B-tree_ (aka Append-only B-tree),
 a fully-persistent datastructure which can be implemented using nothing but

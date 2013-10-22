@@ -10,9 +10,9 @@ true: package(lwt.preemptive)
 <test.*>: package(oUnit), use_libbaardskeerder
 <*_test.*>: package(oUnit), package(quickcheck)
 <bsmgr.*>: package(unix), package(oUnit), use_libbaardskeerder, package(quickcheck)
-<bsmgr.{native,byte}>: link_libbaardskeerder
+<bsmgr.{native,byte}>: link_libbaardskeerder, package(cstruct), package(unix-simple-blkdev), package(mirage), package(mirage-net)
 <baardskeerder.cma>: use_libbaardskeerder, link_libbaardskeerder
 <hudson_xml.{*}>: package(oUnit)
-<blkif.*>: package(mirage), package(unix-simple-blkdev), package(cstruct)
+<blkif.*>: package(unix-simple-blkdev), package(cstruct)
 
 <*_demo.*>: package(unix), package(oUnit), use_libbaardskeerder, link_libbaardskeerder

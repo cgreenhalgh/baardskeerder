@@ -29,7 +29,7 @@ let suite =
     [ Index_test.suite;
       Indexz_test.suite;
       Tree_test.suite;
-      Flog_test.suite;
+      (*Flog_test.suite;*)
       Slab_test.suite;
       Dbx_test.suite;
       Range_test.suite;

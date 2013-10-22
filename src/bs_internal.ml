@@ -29,20 +29,27 @@ sig
 
   val bind : 'a m -> ('a -> 'b m) -> 'b m
   val return : 'a -> 'a m
+  val fail : exn -> 'a m
+  val catch : (unit -> 'a m) -> (exn -> 'a m) -> 'a m
 
   val init : string -> t m
   val close : t -> unit m
 
-  val next : t -> int
+  (*no meaningful current size in use for block dev*)
+  (*val next : t -> int*)
 
   (* This will result in a string of *at least* the given length *)
   val read : t -> store_offset -> length -> string m
+  (* without append, write must extend a file if the store does
+   * not pre-allocate maximum size *)
   val write : t -> string -> string_offset -> length -> store_offset -> unit m
-  val append : t -> string -> string_offset -> length -> store_offset m
+  (*append is not meaningful for block dev*)
+  (*val append : t -> string -> string_offset -> length -> store_offset m*)
 
   val fsync : t -> unit m
 
-  val with_fd : t -> (Unix.file_descr -> 'a) -> 'a m
+  (*no unix file descriptor for general block dev*)
+  (*val with_fd : t -> (Unix.file_descr -> 'a) -> 'a m*)
 
   val run : 'a m -> 'a
 end
