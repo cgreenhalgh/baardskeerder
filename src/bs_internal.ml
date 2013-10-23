@@ -31,7 +31,7 @@ sig
   val return : 'a -> 'a m
   val fail : exn -> 'a m
   val catch : (unit -> 'a m) -> (exn -> 'a m) -> 'a m
-  val run : 'a m -> 'a
+  (*val run : 'a m -> 'a*)
 
   val init : string -> t m
   val close : t -> unit m

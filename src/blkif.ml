@@ -21,8 +21,6 @@ open Bs_internal
 
 module Lwt_ = Lwt
 
-open Lwt_unix
-
 exception Unsupported of string
 
 module Store : STORE with type 'a m = 'a Lwt.t =
@@ -50,15 +48,10 @@ struct
   let (>>=) = bind
 
   let init name =
-    Lwt.catch
-      (fun () ->
-        Printf.printf "blkif.init %s\n%!" name;
-        Blkdev.create name name >>= fun blkif ->
-        return (T (blkif))
-      )
-      (fun e ->
-        let msg = Printf.sprintf "init %s failed with :%s" name (Printexc.to_string e) in
-        Lwt.fail (Failure msg))
+    OS.Devices.find_blkif name >>= fun oblkif ->
+    match oblkif with
+    | None -> Lwt.fail (Failure ("init could not find blkif " ^ name))
+    | Some blkif -> return (T (blkif))
 
   let close (T (blkif)) =
           Printf.printf "blkif.close\n%!";
@@ -110,10 +103,13 @@ struct
     in
     readcstruct 0
 
+  (* missing on xen: OS.Io_page.round_to_page_size 1 *)
+  let page_size = 4096
+
   let write (T (blkif)) bufstring bufoffset buflength offset =
     (*Printf.printf "write %d@%d %d\n%!" buflength bufoffset offset;*)
     (* break request down to Io_pages *)
-    let pagesize = OS.Io_page.round_to_page_size 1 in
+    let pagesize = page_size in
     let pagefrom = offset / pagesize in
     let pageto = (offset+buflength-1) / pagesize in
     let rec writepage pagei =
@@ -156,5 +152,5 @@ struct
   let with_fd t (fn:file_descr -> 'a) : 'a Lwt.t =
      Lwt.fail(Unsupported("blkif.with_fd not supportable"))
 
-  let run x = Lwt_main.run x
+  (*let run x = Lwt_main.run x*)
 end
