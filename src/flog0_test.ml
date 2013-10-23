@@ -29,7 +29,7 @@ let kps = ["xxxyyyzzz-123", out 0 1100;
            "xxxyyyzzz-238", out 0 1700;]
 
 open Flog0
-module MF = Flog0(Store.Sync)
+module MF = Flog0(Store_unix.Sync)
 
 let pu_leaf () =
   let b = Buffer.create 128 in

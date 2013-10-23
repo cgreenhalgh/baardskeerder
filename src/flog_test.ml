@@ -25,7 +25,7 @@ open Flog
 
 open Base
 
-module MyFlog = Flog(Store.Sync)
+module MyFlog = Flog(Store_unix.Sync)
 
 open MyFlog
 

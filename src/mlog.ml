@@ -34,6 +34,7 @@ type t = { spindles: s array;
 type 'a m = 'a
 let bind a f = f a
 let return v = v
+let run x = x
 
 let _d = ref 2
 

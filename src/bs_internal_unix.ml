@@ -43,4 +43,12 @@ sig
   val write : t -> string -> string_offset -> length -> store_offset -> unit m
 
   val fsync : t -> unit m
+
+  (*next and append is not meaningful for block dev - will not be supported on all stores*)
+  val append : t -> string -> string_offset -> length -> store_offset m
+  val next : t -> int
+
+  (*no unix file descriptor for general block dev - will not be supported on all stores*)
+  val with_fd : t -> (Unix.file_descr -> 'a) -> 'a m
+
 end

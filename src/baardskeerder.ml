@@ -29,15 +29,9 @@ end
 module Stores =
 struct
   module Memory = Store.Memory
-  module Sync = Store.Sync
-  module Lwt = Store.Lwt
+  (*module Sync = Store.Sync*)
+  (*module Lwt = Store.Lwt*)
 end
-
-module Blkif =
-struct 
-  module Store = Blkif.Store
-end
-
 
 module Baardskeerder
   (LF: functor(S: Bs_internal.STORE) -> Log.LOG with type 'a m = 'a S.m) =
@@ -95,5 +89,6 @@ struct
   let unset_metadata t = L.unset_metadata t
 end
 
-module SB = Baardskeerder(Logs.Flog0)(Stores.Sync)
+(* warning - transient implementation! *)
+module SB = Baardskeerder(Logs.Flog0)(Stores.Memory)
 include SB

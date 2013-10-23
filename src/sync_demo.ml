@@ -17,7 +17,7 @@
  * along with Baardskeerder.  If not, see <http://www.gnu.org/licenses/>.
  *)
 
-module MyLog = Flog0.Flog0(Store.Sync)
+module MyLog = Flog0.Flog0(Store_unix.Sync)
 module MyDB = Tree.DB(MyLog)
 
 let main () =

@@ -19,7 +19,7 @@
 
 open Lwt
 
-module MyLog = Flog0.Flog0(Store.Lwt)
+module MyLog = Flog0.Flog0(Store_unix.Lwt)
 module MyDB = Tree.DB(MyLog)
 
 let main () =

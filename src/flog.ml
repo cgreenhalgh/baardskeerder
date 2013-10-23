@@ -242,13 +242,14 @@ and deserialize_metadata s = fst $ SerDes.metadata_reader s 0
 
 
 module Flog =
-  functor(S:Bs_internal.STORE) ->
+  functor(S:Bs_internal_unix.STORE) ->
 struct
 
   type 'a m = 'a S.m
   let bind = S.bind
   and (>>=) = S.bind
   and return = S.return
+  and run = S.run
 
   type t = {
     fd: S.t;

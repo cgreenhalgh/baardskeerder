@@ -1,8 +1,26 @@
 description = "Baardskeerder: an append-only B-tree-ish local database"
 version = "0.5.1"
 exists_if = "baardskeerder.cma,baardskeerder.cmxa"
-requires = "unix, lwt.unix, lwt.preemptive"
+requires = ""
 archive(byte) = "baardskeerder.cma"
 archive(native) = "baardskeerder.cmxa"
 linkopts = "-cclib -lbaardskeerder_c"
 
+package "unix" (
+  version = "0.5.1"
+  description = "Unix-dependent Baardskeerder back-ends"
+  requires = "unix, lwt.unix, lwt.preemptive, mirage-baardskeerder"
+  archive(byte) = "baardskeerder_unix.cma"
+  archive(native) = "baardskeerder_unix.cmxa"
+  linkopts = "-cclib -lbaardskeerder_unix_c"
+  exists_if = "baardskeerder_unix.cma,baardskeerder_unix.cmxa"
+)
+
+package "mirage" (
+  version = "0.5.1"
+  description = "Mirage-dependent Baardskeerder back-ends"
+  requires = "mirage"
+  archive(byte) = "baardskeerder_mirage.cma"
+  archive(native) = "baardskeerder_mirage.cmxa"
+  exists_if = "baardskeerder_mirage.cma,baardskeerder_mirage.cmxa"
+)

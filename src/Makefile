@@ -1,12 +1,12 @@
 OCAML_FIND ?= ocamlfind
 
 build:
-	ocamlbuild -use-ocamlfind bsmgr.native baardskeerder.cma baardskeerder.cmxa baardskeerder.a bs_internal.cma bs_internal.cmxa
+	ocamlbuild -use-ocamlfind bsmgr.native baardskeerder.cma baardskeerder.cmxa baardskeerder.a bs_internal.cma bs_internal.cmxa baardskeerder_unix.cma baardskeerder_unix.cmxa baardskeerder_unix.a baardskeerder_mirage.cma baardskeerder_mirage.cmxa baardskeerder_mirage.cmi
 
 clean:
 	ocamlbuild -use-ocamlfind -clean
 install:
-	$(OCAML_FIND) install baardskeerder META \
+	$(OCAML_FIND) install mirage-baardskeerder META \
 	  _build/baardskeerder.cma \
 	  _build/baardskeerder.cmxa \
 	  _build/bs_internal.cma \
@@ -15,8 +15,16 @@ install:
 	  _build/baardskeerder.mli \
 	  _build/baardskeerder.cmi \
 	  _build/libbaardskeerder_c.a \
-	  _build/baardskeerder.a
-
+	  _build/baardskeerder.a \
+	  _build/baardskeerder_unix.cma \
+	  _build/baardskeerder_unix.cmxa \
+	  _build/baardskeerder_unix.mli \
+	  _build/baardskeerder_unix.cmi \
+	  _build/libbaardskeerder_unix_c.a \
+	  _build/baardskeerder_mirage.cma \
+	  _build/baardskeerder_mirage.cmxa \
+	  _build/baardskeerder_mirage.mli \
+	  _build/baardskeerder_mirage.cmi \
 
 uninstall:
 	$(OCAML_FIND) remove baardskeerder

@@ -27,6 +27,7 @@ type action =
 
 type ('a,'b) result = | OK of 'a | NOK of 'b
 
+(* Note: this is a transient in-memory store in this variant of Baardskeerder *)
 val init : string -> unit
 val make : string -> t
 val close : t -> unit
@@ -42,6 +43,7 @@ val delete: tx -> k -> (unit,k) result
 
 module Logs :
 sig
+  (*Unix-dependent*)
   (*module Flog : functor(S: Bs_internal.STORE) -> Log.LOG with type 'a m = 'a
    * S.m*)
   module Flog0 : functor(S: Bs_internal.STORE) -> Log.LOG with type 'a m = 'a S.m
@@ -50,13 +52,9 @@ end
 module Stores :
 sig
   module Memory : Bs_internal.STORE with type 'a m = 'a
-  module Sync : Bs_internal.STORE with type 'a m = 'a
-  module Lwt : Bs_internal.STORE with type 'a m = 'a Lwt.t
-end
-
-module Blkif :
-sig
-  module Store : Bs_internal.STORE with type 'a m = 'a Lwt.t
+  (*Unix-dependent*)
+  (*module Sync : Bs_internal.STORE with type 'a m = 'a
+  module Lwt : Bs_internal.STORE with type 'a m = 'a Lwt.t*)
 end
 
 module Pack :

@@ -142,10 +142,18 @@ struct
   let fsync (T (blkif)) = 
     return ()
 
-  (* this is heavily used in Flog, which basically bypasses the
-   * Store API, but isn't used in Flog0, so we'll omit it and stick
-   * to Flog0 *)
-   let with_fd (T (blkif)) f =
+  (*next and append is not meaningful for block dev - will not be supported on all stores*)
+  let append t buf off len : store_offset Lwt.t =
+     Lwt.fail(Unsupported("blkif.append not supportable"))
+
+  let next t : int = 
+     raise (Unsupported("blkif.next not supportable"))
+
+
+  (*no unix file descriptor for general block dev - will not be supported on all stores*)
+  type file_descr = int
+
+  let with_fd t (fn:file_descr -> 'a) : 'a Lwt.t =
      Lwt.fail(Unsupported("blkif.with_fd not supportable"))
 
   let run x = Lwt_main.run x

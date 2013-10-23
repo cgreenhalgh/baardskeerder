@@ -47,6 +47,15 @@ let _ = dispatch & function
       dep ["link"; "ocaml"; "link_libbaardskeerder"]
         ["libbaardskeerder_c.a"];
 
+      flag ["ocaml"; "use_libbaardskeerder_unix"; "link"; "library"; "byte"] &
+        S[A"-cclib"; A"-lbaardskeerder_unix_c";];
+             
+      flag ["c"; "use_libbaardskeerder_unix"; "ocamlmklib"] &
+        S[ A"-lbaardskeerder_unix_c";];
+                           
+      dep ["link"; "ocaml"; "link_libbaardskeerder_unix"]
+        ["libbaardskeerder_unix_c.a"];
+                                         
       flag ["compile"; "c"]
         (S[A"-ccopt"; A"-I.."; A"-ccopt"; A"-msse4.2";
            A"-I";A(ocamlfind_query "lwt")]);

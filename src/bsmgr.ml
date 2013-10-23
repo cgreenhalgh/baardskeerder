@@ -41,21 +41,36 @@ type command =
   | Hudson
   | Help
 
-module type LF = functor(S: Bs_internal.STORE) -> Log.LOG with type 'a m = 'a S.m
+module type UnixMS = Bs_internal_unix.STORE
 module type MS = Bs_internal.STORE
+
+module type LF = functor(S: MS) -> Log.LOG with type 'a m = 'a S.m
+module type UnixLF = functor(S: UnixMS) -> Log.LOG with type 'a m = 'a S.m
+
+
 let get_lf = function
-  | "Flog0" -> (module Flog0.Flog0 : LF)
-  (*| "Flog" -> (module Flog.Flog : LF)*)
-  | _ -> invalid_arg "get_lf"
+  | "Flog0" -> Some (module Flog0.Flog0 : LF)
+  | arg -> None
+
+let get_unix_lf = function
+  | "Flog" -> Some (module Flog.Flog : UnixLF)
+  | arg -> None
 
 let get_store = function
-  | "Sync" -> (module Store.Sync: MS)
-  | "Lwt" ->
-    (* let () = Lwt_unix.set_default_async_method Lwt_unix.Async_none in *)
-    (module Store.Lwt : MS)
   | "Blkif" -> (module Blkif.Store : MS)
   | "Memory" -> (module Store.Memory : MS)
-  | _ -> invalid_arg "get_store"
+  | "Sync" -> (module Store_unix.Sync: MS)
+  | "Lwt" ->
+    (* let () = Lwt_unix.set_default_async_method Lwt_unix.Async_none in *)
+    (module Store_unix.Lwt : MS)
+  | _ -> failwith "get_store unknown"
+
+let get_unix_store = function
+  | "Sync" -> Some (module Store_unix.Sync: UnixMS)
+  | "Lwt" ->
+    (* let () = Lwt_unix.set_default_async_method Lwt_unix.Async_none in *)
+    Some (module Store_unix.Lwt : UnixMS)
+  | _ -> None
 
 let () =
   let command = ref Help in
@@ -104,16 +119,35 @@ let () =
   in
   let usage_msg = "simple baardskeerder tester driver and benchmark" in
   let () = Arg.parse spec (fun _ ->()) usage_msg in
-  let f = get_lf !log_name in
   let store = get_store !store_name in
   let module MyStore = (val store: MS) in
-  let module MyF = (val f : LF) in
-  let module MyLog = MyF(MyStore) in
+  let storeunixopt = get_unix_store !store_name in
+  let lfopt = get_lf !log_name in
+  let lfunixopt = get_unix_lf !log_name in
+  let log,f = match lfopt with
+    | Some f -> 
+      let module MyF = (val f : LF) in
+      (module MyF(MyStore) : Log.LOG),(module (val f) : UnixLF)
+    | None ->
+      match lfunixopt with
+      | Some f -> 
+        begin
+	  match storeunixopt with
+          | Some sunix -> 
+            let module MyUnixStore = (val sunix : UnixMS) in
+            (module (val f : UnixLF)(MyUnixStore) : Log.LOG),
+            f
+          | None -> failwith "log is not unix-compatible"
+        end
+        | None -> failwith "log not found"
+  in 
+  let module MyF = (val f : UnixLF) in
+  let module MyLog = (val log : Log.LOG) in
   let module MyDB  = DB(MyLog) in
   let module MyDBX = DBX(MyLog) in
   let module MySync = Sync(MyLog) in
-  let (>>=) = MyStore.bind in
-  let return = MyStore.return in
+  let (>>=) = MyLog.bind in
+  let return = MyLog.return in
   let make_key i = Printf.sprintf "key_%08i" i in
 
   let set_loop db vs n (cb: progress_callback) =
@@ -191,7 +225,7 @@ let () =
     loop 0
   in
   let () =
-    let run x = MyStore.run x in
+    let run x = MyLog.run x in
     match !command with
     | Help -> Arg.usage spec usage_msg
     | Test -> let _ = OUnit.run_test_tt_main Test.suite in ()
@@ -252,7 +286,9 @@ let () =
       in
       run t
     | Rewrite ->
-      let t =
+      failwith "needs fixing -sorry"
+      (*Not sure how to make this play with change of functors*)
+      (*let t =
         begin
           let module MyRewrite = Rewrite.Rewrite(MyF)(MyF)(MyStore) in
           MyLog.make !fn >>= fun l0 ->
@@ -266,7 +302,7 @@ let () =
           MyLog.close l1
         end
       in
-      run t
+      run t*)
     | Punch ->
       let t =
         begin

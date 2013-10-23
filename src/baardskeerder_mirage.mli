@@ -17,34 +17,8 @@
  * along with Baardskeerder.  If not, see <http://www.gnu.org/licenses/>.
  *)
 
-open Entry
-open Base
-open Slab
-
-module type LOG = sig
-  type t
-  type 'a m
-
-  val bind : 'a m -> ('a -> 'b m) -> 'b m
-  val return : 'a -> 'a m
-  val run : 'a m -> 'a
-
-  val init: ?d:int -> string  -> Time.t -> unit m
-  val write : t -> Slab.t -> unit m
-  val last  : t -> pos
-  val lookup: t -> pos m
-  val read  : t -> pos -> entry m
-  val sync  : t -> unit m
-  val make  : string -> t m
-  val close : t -> unit m
-  val clear: t -> unit m
-  val get_d: t -> int
-  val now: t -> Time.t
-  val dump: ?out:Pervasives.out_channel -> t -> unit m
-  val compact: ?min_blocks:int ->
-    ?progress_cb:(offset -> offset -> unit) option -> t -> unit m
-
-  val set_metadata: t -> string -> unit m
-  val get_metadata: t -> string option m
-  val unset_metadata: t -> unit m
+module Stores :
+sig
+  module Blkif : Bs_internal.STORE with type 'a m = 'a Lwt.t
 end
+

@@ -17,4 +17,4 @@
  * along with Baardskeerder.  If not, see <http://www.gnu.org/licenses/>.
  *)
 
-module Flog : functor (S:Bs_internal.STORE) -> Log.LOG with type 'a m = 'a S.m
+module Flog : functor (S:Bs_internal_unix.STORE) -> Log.LOG with type 'a m = 'a S.m
