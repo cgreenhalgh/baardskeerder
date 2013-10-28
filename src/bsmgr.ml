@@ -41,36 +41,99 @@ type command =
   | Hudson
   | Help
 
-module type UnixMS = Bs_internal_unix.STORE
-module type MS = Bs_internal.STORE
+module type RunLog = 
+sig
+  include Log.LOG
+  val run : 'a m -> 'a
+end
 
-module type LF = functor(S: MS) -> Log.LOG with type 'a m = 'a S.m
-module type UnixLF = functor(S: UnixMS) -> Log.LOG with type 'a m = 'a S.m
+let mirage_run = ref false
+let providers = Hashtbl.create 8
+open Lwt
 
+(* mirage blkif helpder *)
+let register_blkif fn frominit : unit Lwt.t =
+  OS.Console.log ("register_blkif "^fn);
+  let added = try Hashtbl.find providers fn
+    with Not_found -> false in
+  if (added) then
+    Lwt.return()
+  else begin
+    Hashtbl.add providers fn true;
+    OS.Console.log ((if frominit then "create" else "open")^" file "^fn);
+    Lwt_unix.openfile fn [Lwt_unix.O_RDWR; Lwt_unix.O_CREAT] 0o666 >>=
+    fun fd -> Lwt_unix.close fd >>= fun () ->
+    OS.Console.log ("add_provider "^fn);
+    Blkdev.add_provider fn fn >>= fun () ->
+    if (!mirage_run)==false then begin
+      mirage_run := true;
+      OS.Console.log "run Mirage main";
+      Lwt.async (fun () -> OS.Main.run (return ()); return ())
+    end;
+    Lwt.return ()
+  end
 
-let get_lf = function
-  | "Flog0" -> Some (module Flog0.Flog0 : LF)
-  | arg -> None
+let get_log = function 
+ | ("Memory","Flog0") -> 
+   let module L = Flog0.Flog0(Store.Memory) in
+   (module struct
+     include L
+     let run x = x
+   end : RunLog)
+ | ("Sync","Flog0") ->
+   let module L = Flog0.Flog0(Store_unix.Sync) in
+   (module struct
+     include L
+     let run x = x
+   end : RunLog)
+ | ("Lwt","Flog0") ->
+   let module L = Flog0.Flog0(Store_unix.Lwt) in
+   (module struct
+     include L 
+     let run x = Lwt_main.run x
+   end : RunLog)
+ | ("Sync","Flog") ->
+   let module L = Flog.Flog(Store_unix.Sync) in
+   (module struct
+     include L
+     let run x = x
+   end : RunLog)
+ | ("Lwt","Flog") ->
+   let module L = Flog.Flog(Store_unix.Lwt) in
+   (module struct
+     include L
+     let run x = Lwt_main.run x
+   end : RunLog)
+ | ("Blkif","Flog0") ->
+   let module L = Flog0.Flog0(Blkif.Store) in
+   (module struct
+     (*include L*)
+     type t = L.t
+     type 'a m = 'a L.m
+     let bind = L.bind
+     let return = L.return
+     let init ?(d=8) fn t0 = 
+	Lwt.bind (register_blkif fn true) (fun () -> L.init ~d:d fn t0)
+     let write = L.write
+     let last = L.last
+     let lookup = L.lookup
+     let read = L.read
+     let sync = L.sync
+     let make fn = 
+        Lwt.bind (register_blkif fn false) (fun () -> L.make fn)
+     let close = L.close
+     let clear = L.clear
+     let get_d = L.get_d
+     let now = L.now
+     let dump = L.dump
+     let compact = L.compact
+     let set_metadata = L.set_metadata
+     let get_metadata = L.get_metadata
+     let unset_metadata = L.unset_metadata
 
-let get_unix_lf = function
-  | "Flog" -> Some (module Flog.Flog : UnixLF)
-  | arg -> None
-
-let get_store = function
-  | "Blkif" -> (module Blkif.Store : MS)
-  | "Memory" -> (module Store.Memory : MS)
-  | "Sync" -> (module Store_unix.Sync: MS)
-  | "Lwt" ->
-    (* let () = Lwt_unix.set_default_async_method Lwt_unix.Async_none in *)
-    (module Store_unix.Lwt : MS)
-  | _ -> failwith "get_store unknown"
-
-let get_unix_store = function
-  | "Sync" -> Some (module Store_unix.Sync: UnixMS)
-  | "Lwt" ->
-    (* let () = Lwt_unix.set_default_async_method Lwt_unix.Async_none in *)
-    Some (module Store_unix.Lwt : UnixMS)
-  | _ -> None
+     let run x = Lwt_main.run x
+   end : RunLog)
+ | (s,n) -> failwith ("Unsupported combination store/log "^s^" "^n)
 
 let () =
   let command = ref Help in
@@ -92,7 +155,7 @@ let () =
   let fn2 = ref "test_compacted.db" in
   let d = ref 4 in
   let log_name = ref "Flog0" in
-  let store_name = ref "Sync" in
+  let store_name = ref "Memory" in
   let mb = ref 1 in
   let test_refs = ref [] in
   let spec = [
@@ -119,30 +182,8 @@ let () =
   in
   let usage_msg = "simple baardskeerder tester driver and benchmark" in
   let () = Arg.parse spec (fun _ ->()) usage_msg in
-  let store = get_store !store_name in
-  let module MyStore = (val store: MS) in
-  let storeunixopt = get_unix_store !store_name in
-  let lfopt = get_lf !log_name in
-  let lfunixopt = get_unix_lf !log_name in
-  let log,f = match lfopt with
-    | Some f -> 
-      let module MyF = (val f : LF) in
-      (module MyF(MyStore) : Log.LOG),(module (val f) : UnixLF)
-    | None ->
-      match lfunixopt with
-      | Some f -> 
-        begin
-	  match storeunixopt with
-          | Some sunix -> 
-            let module MyUnixStore = (val sunix : UnixMS) in
-            (module (val f : UnixLF)(MyUnixStore) : Log.LOG),
-            f
-          | None -> failwith "log is not unix-compatible"
-        end
-        | None -> failwith "log not found"
-  in 
-  let module MyF = (val f : UnixLF) in
-  let module MyLog = (val log : Log.LOG) in
+  let log = get_log (!store_name, !log_name) in
+  let module MyLog = (val log : RunLog) in 
   let module MyDB  = DB(MyLog) in
   let module MyDBX = DBX(MyLog) in
   let module MySync = Sync(MyLog) in

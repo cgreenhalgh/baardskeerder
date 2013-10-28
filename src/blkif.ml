@@ -47,22 +47,25 @@ struct
 
   let (>>=) = bind
 
+  let debug = false
+
   let init name =
+    OS.Console.log ("Baardskeerder_mirage.Stores.Blkif.init "^name);
     OS.Devices.find_blkif name >>= fun oblkif ->
     match oblkif with
     | None -> Lwt.fail (Failure ("init could not find blkif " ^ name))
     | Some blkif -> return (T (blkif))
 
   let close (T (blkif)) =
-          Printf.printf "blkif.close\n%!";
-          blkif#destroy ;
+          OS.Console.log ("blkif.close");
+          (*blkif#destroy ;*)
           return ()
 
   (** from blkif interface - read_512! *)
   let sectorsize = 512
 
   let read (T (blkif)) offset length =
-    (*Printf.printf "blkif.read %d %d\n%!" offset length;*)
+    if debug then OS.Console.log (Printf.sprintf "Blkif.read %d %d" offset length); 
     let outstring = String.create length in
     if length==0 then return outstring else
     let sectorfrom = offset / sectorsize in
@@ -77,8 +80,8 @@ struct
           let from = if rdoffset >= offset then 0 else (offset-rdoffset) in
           let len = if (rdoffset+max <= offset+length) then 
                   max-from else (offset+length-rdoffset-from) in
-          (*Printf.printf "get bytes cstruct %d from %d, buf %d at %d, from=%d
-          len=%d\n%!" max rdoffset length outpos from len;*)
+          if debug then Printf.printf "get bytes cstruct %d from %d, buf %d at %d, from=%d
+          len=%d\n%!" max rdoffset length outpos from len;
           Cstruct.blit_to_string cstruct from outstring outpos len;
           readcstruct (rdoffset+max) (outpos+len)
     in
@@ -86,7 +89,7 @@ struct
     return outstring
   
   let read_one_page blkif page offset =
-    (*Printf.printf "blkif.read_one_page %d\n%!" offset;*)
+    if debug then Printf.printf "blkif.read_one_page %d\n%!" offset;
     let sectoroffset = offset / sectorsize in
     let sectorlength = (OS.Io_page.length page) / sectorsize in
     let cstructs = blkif#read_512 (Int64.of_int sectoroffset) (Int64.of_int
@@ -107,7 +110,7 @@ struct
   let page_size = 4096
 
   let write (T (blkif)) bufstring bufoffset buflength offset =
-    (*Printf.printf "write %d@%d %d\n%!" buflength bufoffset offset;*)
+    if debug then Printf.printf "write %d@%d %d\n%!" buflength bufoffset offset;
     (* break request down to Io_pages *)
     let pagesize = page_size in
     let pagefrom = offset / pagesize in
@@ -126,8 +129,8 @@ struct
       let dstoff = if offset > pagestart then offset-pagestart else 0 in
       let len = min (pagesize-dstoff) (bufoffset+buflength-srcoff) in
       OS.Io_page.string_blit bufstring srcoff page dstoff len;
-      (*Printf.printf "blkif.write_page %d len %d with new %d+%d from %d\n%!"
-      pagestart (OS.Io_page.length page) dstoff len srcoff;*)
+      if debug then Printf.printf "blkif.write_page %d len %d with new %d+%d from %d\n%!"
+      pagestart (OS.Io_page.length page) dstoff len srcoff;
       blkif#write_page (Int64.of_int pagestart) page >>= fun () ->
       if pagei >= pageto then return () else
       writepage (pagei+1)

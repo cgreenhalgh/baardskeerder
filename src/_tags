@@ -1,15 +1,15 @@
 true: annot
 true: debug
 true: package(lwt)
-<flog.*>: package(lwt.unix), package(lwt.preemptive)
-<store_unix.*>: package(lwt.unix), package(lwt.preemptive)
+<flog.*>: package(lwt.unix), package(lwt.preemptive), thread
+<store_unix.*>: package(lwt.unix), package(lwt.preemptive), thread
 <**/*.ml>: warn_error_A
 <**/*_test.ml>: -warn_error_A, warn_A
 <flog*.ml>: warn_error_A
 <test.*>: package(oUnit), use_libbaardskeerder, use_libbaardskeerder_unix
 <*_test.*>: package(oUnit), package(quickcheck)
-<bsmgr.*>: package(unix), package(oUnit), use_libbaardskeerder, use_libbaardskeerder_unix, package(quickcheck)
-<bsmgr.{native,byte}>: link_libbaardskeerder, link_libbaardskeerder_unix, package(cstruct), package(unix-simple-blkdev), package(mirage), package(lwt.preemptive), package(threads)
+<bsmgr.*>: package(unix), package(oUnit), use_libbaardskeerder, use_libbaardskeerder_unix, package(quickcheck), package(mirage), package(unix-simple-blkdev)
+<bsmgr.{native,byte}>: link_libbaardskeerder, link_libbaardskeerder_unix, package(cstruct), package(unix-simple-blkdev), package(mirage), package(lwt.preemptive), thread
 <baardskeerder.cma>: use_libbaardskeerder, link_libbaardskeerder
 <baardskeerder_unix.cma>: use_libbaardskeerder_unix, link_libbaardskeerder_unix
 <hudson_xml.{*}>: package(oUnit)
