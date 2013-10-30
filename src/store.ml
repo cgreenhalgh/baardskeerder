@@ -55,22 +55,25 @@ struct
       raise End_of_file
 
   let write (T b) d p l o =
-    let s = Buffer.contents !b in
-    let sl = String.length s in
-
-    let s' =
-      if o + l < sl
-      then s
-      else s ^ (String.create (o + l - sl))
-    in
-
-    String.blit d p s' o l;
-
-    let b' = Buffer.create 0 in
-    Buffer.add_string b' s';
-
-    b := b';
-
+    let d' = if p==0 && String.length d==l then d 
+      else String.sub d p l in
+    let bl = Buffer.length !b in
+    let newbl = max bl (o+l) in
+    (* over-write *)
+    if o<bl then begin
+      let pre = Buffer.sub !b 0 o in
+      let post = if o+l<bl then 
+        Buffer.sub !b (o+l) (bl-(o+l)) else "" in
+      b := Buffer.create (newbl+128);
+      Buffer.add_string !b pre;
+      Buffer.add_string !b d';
+      Buffer.add_string !b post
+    end else begin
+      (* special case append *)
+      if o>bl then
+        Buffer.add_string !b (String.create (o-bl));
+      Buffer.add_string !b d'
+    end;
     return ()
 
   let fsync (T _) = return ()
