@@ -112,6 +112,8 @@ let get_log = function
      type 'a m = 'a L.m
      let bind = L.bind
      let return = L.return
+     let fail = L.fail
+     let catch = L.catch
      let init ?(d=8) fn t0 = 
 	Lwt.bind (register_blkif fn true) (fun () -> L.init ~d:d fn t0)
      let write = L.write
@@ -266,7 +268,8 @@ let () =
     loop 0
   in
   let () =
-    let run x = MyLog.run x in
+    let run x = MyLog.run (MyLog.catch (fun () -> x) 
+      (fun ex -> Printf.printf "Exception! %s\n" (Printexc.to_string ex); Printexc.print_backtrace (out_channel_of_descr stderr); MyLog.return ())) in
     match !command with
     | Help -> Arg.usage spec usage_msg
     | Test -> let _ = OUnit.run_test_tt_main Test.suite in ()

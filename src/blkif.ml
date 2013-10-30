@@ -39,7 +39,7 @@ struct
    * BS's. *)
   type page = {
     pageno : int;
-    data : Cstruct.t list
+    mutable data : Cstruct.t list
   }
   type t = { 
     blkif : OS.Devices.blkif;
@@ -56,10 +56,11 @@ struct
 
   let (>>=) = bind
 
-  let debug = false
+  let info x = Printf.printf "%s\n%!" x
+  let debug x = () (*Printf.printf "%s\n%!" x*)
 
   let init name =
-    OS.Console.log ("Baardskeerder_mirage.Stores.Blkif.init "^name);
+    info("Baardskeerder_mirage.Stores.Blkif.init "^name);
     OS.Devices.find_blkif name >>= fun oblkif ->
     match oblkif with
     | None -> Lwt.fail (Failure ("init could not find blkif " ^ name))
@@ -69,82 +70,117 @@ struct
       }
 
   let close ({blkif;_}) =
-          OS.Console.log ("blkif.close");
+          info("blkif.close");
           (*blkif#destroy ;*)
           return ()
+
+  (* missing on xen: OS.Io_page.round_to_page_size 1 *)
+  let page_size = 4096
 
   (** from blkif interface - read_512! *)
   let sectorsize = 512
   let sectors_per_page = page_size / sectorsize
 
+  (* helper fn - choose cache slot to use/eject *)
+  let get_empty_cache_slot cache pno = 
+    if pno==0 then 0 
+    else begin
+      let highest = match (Array.get cache 1) with 
+      | None -> true 
+      | Some {pageno;_} -> (pno>=pageno) in
+      if (highest) then 1
+      (* TODO - use the full set of cache slots - LRU? *)
+      else 2
+    end 
+
+  (* helper fn - find page in cache *)
+  let get_cache_page cache pno =
+    let find_page ox el = match ox with
+    | Some _ -> ox
+    | None -> begin match el with
+      | Some page -> if page.pageno==pno then Some page else None
+      | None -> None
+      end in
+    Array.fold_left find_page None cache
+
+  (* helper fn - read one page from cache calling blitfn *)
+  let read_from_cache (page:page) (blitfn: Cstruct.t -> int -> int -> int -> unit) blitzero blitlen =
+    let start = page.pageno*page_size in
+    debug (Printf.sprintf "read_from_cache p=%d to @%d+%d" page.pageno blitzero blitlen);
+    (* note: cstructs are in reverse order! *) 
+    let rec rread data lastoffset =
+      match data with 
+      | [] -> ()
+      | cstruct :: data' -> begin
+          let size = Cstruct.len cstruct in
+          let firstoffset = lastoffset-size in
+          let minoffset = max blitzero firstoffset in
+          let maxoffset = min (blitzero+blitlen) lastoffset in
+          let cnt = maxoffset-minoffset in
+          if cnt>0 then begin
+            debug (Printf.sprintf "- blit %d bytes cstruct+%d -> buf+%d" cnt (minoffset-firstoffset) (minoffset-blitzero));
+            blitfn cstruct (minoffset-firstoffset) cnt (minoffset-blitzero)
+          end else debug (Printf.sprintf "- !zero blit cstruct %d-%d buf %d-%d" firstoffset lastoffset blitzero (blitzero+blitlen));
+          rread data' firstoffset
+        end
+    in
+    rread page.data (start+page_size)  
+ 
+  (* helper fn - read consecutive page block from blkif and
+     populate cache and call blitfn via read_from_cache for each *)
+  let read_new_pages blkif cache pagefrom pageto blitfn blitzero blitlen = 
+    let sectorfrom = sectors_per_page*pagefrom
+    and sectorto = (sectors_per_page*(pageto+1))-1 in
+    debug (Printf.sprintf "read_new_pages %d-%d to @%d+%d" pagefrom pageto blitzero blitlen);
+    let cstructs = blkif#read_512 (Int64.of_int sectorfrom)
+      (Int64.of_int (sectorto+1-sectorfrom)) in
+    let rec rreadcstructs pno ppos data =
+      (* get next cstruct (if any) *)
+      Lwt_stream.get cstructs >>= fun co -> match co with
+      | None -> return ()
+      | Some cstruct ->
+        let max = Cstruct.len cstruct in
+        rreadcstruct cstruct 0 max pno ppos data 
+    and rreadcstruct cstruct cpos cmax pno ppos data = begin 
+      (* add available cstruct bytes to current page data *)
+      let cnt = max (cmax-cpos) (page_size-ppos) in
+      let data' = if cnt>0 then 
+        (Cstruct.sub cstruct cpos cnt) :: data
+      else data in
+      let ppos' = ppos+cnt in
+      let (data'',pno'',ppos'') = 
+        if ppos' < page_size then (data',pno,ppos') else begin
+          (* complete cache page read! *)
+          let page = {pageno=pno; data=data'} in
+          (* find/make empty cache slot *)
+          let cix = get_empty_cache_slot cache pno in
+          debug (Printf.sprintf "cache new page %d in slot %d" pno cix);
+          Array.set cache cix (Some page);
+          read_from_cache page blitfn blitzero blitlen;
+          ([],pno+1,0)
+        end
+      in
+      let cpos' = cpos+cnt in
+      if cpos'<cmax then 
+        rreadcstruct cstruct cpos' cmax pno'' ppos'' data'' 
+      else
+        rreadcstructs pno'' ppos'' data''
+    end in
+    rreadcstructs pagefrom 0 []
+
   let read ({blkif;cache}) offset length =
-    if debug then OS.Console.log (Printf.sprintf "Blkif.read %d %d" offset length); 
+    debug (Printf.sprintf "Blkif.read %d+%d" offset length); 
     let outstring = String.create length in
     if length==0 then return outstring else
     let pagesize = page_size in
     let pagefrom = offset / pagesize in
-    let pageto = (offset+buflength-1) / pagesize in
+    let pageto = (offset+length-1) / pagesize in
     (* helper fn - handle cache hit *)
-    let read_from_cache page =
-      let start = page.pageno*page_size in
-      (* note: cstructs are in reverse order! *) 
-      let rec rread data lastoffset =
-        match data with 
-        | [] -> ()
-        | cstruct :: data' -> begin
-            let size = Cstruct.length cstruct in
-            let firstoffset = lastoffset-size in
-            let minoffset = max offset firstoffset in
-            let maxoffset = min (offset+length) lastoffset in
-            let cnt = maxoffset-minoffset in
-            if cnt>0 then
-              Cstruct.blit_to_string cstruct (minoffset-firstoffset) 
-                outstring (minoffset-offset) cnt
-          end
-      in
-      rread page.data (start+page_size)  
-    in
-    (* helper fn - choose cache slot to use/eject *)
-    let get_empty_cache_slot pno = 
-      (* TODO - use the full set of cache slots; page 0 in 0; rest LRU? *)
-      return (if pno==0 then 0 else 1) in
+    let blitfn cstruct cpos clen dpos = 
+      Cstruct.blit_to_string cstruct cpos outstring dpos clen in
+    let read_from_cache page = read_from_cache page blitfn offset length in
     (* helpder fn - handle multi-page cache miss *)
-    let read_new_pages pagefrom pageto = 
-      let sectorfrom = sectors_per_page*pagefrom
-      and sectorto = (sectors_per_page*(pageto+1))-1 in
-      let cstructs = blkif#read_512 (Int64.of_int sectorfrom)
-        (Int64.of_int (sectorto+1-sectorfrom)) in
-      let rec rreadcstructs pno ppos data =
-        (* get next cstruct (if any) *)
-        Lwt_stream.get cstructs >>= fun co -> match co with
-        | None -> return ()
-        | Some cstruct ->
-          let max = Cstruct.len cstruct in
-          rreadcstruct cstruct 0 max pno ppos data 
-      and rreadcstruct cstruct cpos cmax pno ppos data = begin 
-        (* add available cstruct bytes to current page data *)
-        let cnt = max (cmax-cpos) (page_size-ppos) in
-        let data' = if cnt>0 then 
-          (Cstruct.sub cstruct cpos cnt) :: data
-        else data in
-        let ppos' = ppos+cnt in
-        let (data'',pno'',ppos'') = 
-          if ppos' < page_size then (data',pno',ppos') else
-          (* complete cache page read! *)
-          let page = {pageno=pno'; data=data'} in
-          (* find/make empty cache slot *)
-          let cix = get_empty_cache_slot pno in
-          Array.set cache cix page;
-          read_from_cache page;
-          ([],pno'+1,0)
-        in
-        if cpos<cmax then 
-          rreadcstruct cstruct (cpos+cnt) cmax pno'' ppos'' data'' 
-        else
-          rreadcstructs pno'' ppos'' data''
-      in
-      rreadcstructs pagefrom 0 []
-    in
+    let read_new_pages pagefrom pageto = read_new_pages blkif cache pagefrom pageto blitfn offset length in
     (* work through pages, satisfying from cache or accumulating
        a maximal block read *)
     let rec rread_page (pno:int) (opagefrom:int option) =
@@ -155,61 +191,49 @@ struct
         | Some pagefrom -> read_new_pages pagefrom pageto
       else begin
         (* check cache *)
-        let find_page ox el = match ox with
-          | Some _ -> ox
-          | None -> begin match el with
-            | Some page -> if page.pageno==pno then Some page else None
-            | None -> None
-            end in
-        let opage = Array.fold_left find_page None cache in
+        let opage = get_cache_page cache pno in
         (* handle cache hit/miss, updating opagefrom *)
-        lwt opagefrom' = match opage with
+        begin match opage with
         | Some page -> begin
             (* cache hit; do any pending read *)
-            lwt _ = match opagefrom with 
+            begin match opagefrom with 
             | Some pagefrom -> 
-              lwt _ = read_new_pages pagefrom (pno-1)
-            | None -> return () in
-            lwt _ = read_from_cache page in
+              read_new_pages pagefrom (pno-1)
+            | None -> return () end >>= fun () -> 
+            read_from_cache page;
             return None
           end
         | None -> begin
             match opagefrom with
             (* remember for real read... *)
-            | None -> Some pno
-            | Some _ -> opagefrom
+            | None -> return (Some pno)
+            | Some _ -> return opagefrom
           end
-        in
+        end >>= fun opagefrom' ->
         (* recurse - next page *)
         rread_page (pno+1) opagefrom'  
+      end
     in 
-    lwt _ = rread_page pagefrom None in
+    rread_page pagefrom None >>= fun () ->
     return outstring
   
-  let read_one_page blkif page offset =
-    if debug then Printf.printf "blkif.read_one_page %d\n%!" offset;
-    (* TODO check cache; fill cache *)
-    let sectoroffset = offset / sectorsize in
-    let sectorlength = (OS.Io_page.length page) / sectorsize in
-    let cstructs = blkif#read_512 (Int64.of_int sectoroffset) (Int64.of_int
-    sectorlength) in
+  let read_one_page blkif cache (page:OS.Io_page.t) offset =
+    debug (Printf.sprintf "blkif.read_one_page %d\n%!" offset);
     let pagecstruct = OS.Io_page.to_cstruct page in
-    let rec readcstruct pagepos =
-      Lwt_stream.get cstructs >>= fun co -> match co with
-        | None -> return ()
-        | Some cstruct ->
-          let len = Cstruct.len cstruct in
-          (* assuming pages are multiple of sectors! *)
-          Cstruct.blit cstruct 0 pagecstruct pagepos len;
-          readcstruct (pagepos+len)
-    in
-    readcstruct 0
-
-  (* missing on xen: OS.Io_page.round_to_page_size 1 *)
-  let page_size = 4096
-
-  let write ({blkif;_}) bufstring bufoffset buflength offset =
-    if debug then Printf.printf "write %d@%d %d\n%!" buflength bufoffset offset;
+    let blitfn cstruct cpos clen dpos =
+          Cstruct.blit cstruct cpos pagecstruct dpos clen in
+    let pno = offset/page_size in
+    (* check cache *)
+    let opage = get_cache_page cache pno in
+    (* handle cache hit/miss, updating opagefrom *)
+    match opage with
+      | Some page -> (* cache hit *)
+        read_from_cache page blitfn offset page_size; return ()
+      | None -> 
+        read_new_pages blkif cache pno pno blitfn offset page_size
+    
+  let write ({blkif;cache}) bufstring bufoffset buflength offset =
+    debug (Printf.sprintf "write @%d+%d to %d" bufoffset buflength offset);
     (* break request down to Io_pages *)
     let pagesize = page_size in
     let pagefrom = offset / pagesize in
@@ -220,16 +244,26 @@ struct
       let page = OS.Io_page.get 1 in
       (if pagestart < offset || pageend > offset+buflength then
         (* need to read existing page content *)
-        read_one_page blkif page pagestart 
+        read_one_page blkif cache page pagestart 
       else return ()) >>= fun () ->
       (* copy in new data *)
       let srcoff = if pagestart > offset then bufoffset+pagestart-offset
         else bufoffset in
       let dstoff = if offset > pagestart then offset-pagestart else 0 in
       let len = min (pagesize-dstoff) (bufoffset+buflength-srcoff) in
-      OS.Io_page.string_blit bufstring srcoff page dstoff len;
-      if debug then Printf.printf "blkif.write_page %d len %d with new %d+%d from %d\n%!"
-      pagestart (OS.Io_page.length page) dstoff len srcoff;
+      (*OS.Io_page.string_blit bufstring srcoff page dstoff len;*)
+      let pagecstruct = OS.Io_page.to_cstruct page in
+      Cstruct.blit_from_string bufstring srcoff pagecstruct dstoff len;
+      (* update page cache *)
+      let cachepage = get_cache_page cache pagei in begin
+        match cachepage with None -> () 
+        | Some cpage -> 
+          debug (Printf.sprintf "update cache of p=%d" pagei);
+          cpage.data <- pagecstruct :: []
+      end;
+      (* actually write *) 
+      debug (Printf.sprintf "blkif.write_page %d+%d with new @%d+%d from %d"
+        pagestart (OS.Io_page.length page) dstoff len srcoff);
       blkif#write_page (Int64.of_int pagestart) page >>= fun () ->
       if pagei >= pageto then return () else
       writepage (pagei+1)

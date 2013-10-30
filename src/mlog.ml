@@ -35,6 +35,8 @@ type 'a m = 'a
 let bind a f = f a
 let return v = v
 let run x = x
+let catch f h = try f() with ex -> h(ex)
+let fail ex = raise ex
 
 let _d = ref 2
 

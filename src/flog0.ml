@@ -32,6 +32,8 @@ struct
   type 'a m = 'a S.m
   let bind = S.bind
   let return = S.return
+  let fail = S.fail
+  let catch = S.catch
   (*let run = S.run*)
 
   let (>>=) = bind

@@ -249,6 +249,8 @@ struct
   let bind = S.bind
   and (>>=) = S.bind
   and return = S.return
+  and fail = S.fail 
+  and catch = S.catch
   and run = S.run
 
   type t = {
