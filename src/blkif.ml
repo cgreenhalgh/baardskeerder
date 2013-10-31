@@ -57,7 +57,7 @@ struct
   let (>>=) = bind
 
   let info x = Printf.printf "%s\n%!" x
-  let debug x = () (*Printf.printf "%s\n%!" x*)
+  let debug x = if false then Printf.printf "%s\n%!" x
 
   let init name =
     info("Baardskeerder_mirage.Stores.Blkif.init "^name);
@@ -143,10 +143,11 @@ struct
         rreadcstruct cstruct 0 max pno ppos data 
     and rreadcstruct cstruct cpos cmax pno ppos data = begin 
       (* add available cstruct bytes to current page data *)
-      let cnt = max (cmax-cpos) (page_size-ppos) in
-      let data' = if cnt>0 then 
+      let cnt = min (cmax-cpos) (page_size-ppos) in
+      let data' = if cnt>0 then begin
+        debug (Printf.sprintf "-take cstruct @%d+%d for page %d @%d" cpos cnt pno ppos);
         (Cstruct.sub cstruct cpos cnt) :: data
-      else data in
+      end else data in
       let ppos' = ppos+cnt in
       let (data'',pno'',ppos'') = 
         if ppos' < page_size then (data',pno,ppos') else begin

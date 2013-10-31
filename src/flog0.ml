@@ -154,7 +154,12 @@ struct
                 t0 = Time.zero;
                }
     in
-    M.iter_array (fun (s,snext) -> _write_metadata s meta) t.spindles >>= fun () ->
+    M.iter_array (fun (s,snext) -> 
+      _write_metadata s meta >>= fun () ->
+      (* Note: also need to zero start of block 1 for size-sniffing algorithm.
+         (Could truncate a file, but this may not be a file) *)
+      let s0 = String.create 4 in S.write s s0 0 (String.length s0) _METADATA_SIZE
+    ) t.spindles >>= fun () ->
     t.last  <- commit;
     t.next_spindle <- 0;
     t.now  <- Time.zero;
@@ -252,15 +257,16 @@ struct
       let rec loop pos=
         S.read s pos 4 >>= fun ls ->
         let l = size_from ls 0 in
+        if (l==0) then S.fail End_of_file else 
         S.read s (pos + 4) l >>= fun es ->
         let e = inflate_entry es in
         let () = Printf.fprintf out "%4i : %s\n%!" pos (Entry.entry2s e)  in
         let pos' = pos + 4 + String.length es in
         loop pos'
       in
-      try
-        loop _METADATA_SIZE
-      with End_of_file -> return ()
+      S.catch
+        (fun () -> loop _METADATA_SIZE)
+        (fun exc -> match exc with End_of_file -> return () | exc -> S.fail exc)
     in
 
     M.iteri_array
