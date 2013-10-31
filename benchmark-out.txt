@@ -1,0 +1,798 @@
+2013-10-30
+Blkif no page cache over unix blkdev without direct io.
+Memory unoptimised.
+Intel Core i7 950 3.07GHz w 6GB RAM
+Windows 7 Enterprise 64 bit
+running 
+
+Virtual Box 4.2.18
+3670MB RAM
+2 vCPU 
+
+running Xen 4.3.0
+
+running (dom0) Ubuntu 13.10
+Linux xenubuntu 3.11.0-12-generic #19-Ubuntu SMP Wed Oct 9 16:20:46 UTC 2013 x86_64 x86_64 x86_64 GNU/Linux
+
+Using:Blkif
+Devices: [Unix-simple-blkdev:test.db(test.db)] provider start
+Devices: [Unix-simple-blkdev:test.db(test.db):test.db] provider plug
+create blkdev test.db file test.db
+Devices: [test.db] sleeping
+Devices: [Unix-simple-blkdev:test.db(test.db):test.db] waking waiters
+Devices: [test.db] waking
+Using:Blkif
+register_blkif test.db
+create file test.db
+add_provider test.db
+run Mirage main
+Devices: [Unix-simple-blkdev:test.db(test.db)] provider start
+Devices: [Unix-simple-blkdev:test.db(test.db):test.db] provider plug
+create blkdev test.db file test.db
+Baardskeerder_mirage.Stores.Blkif.init test.db
+Devices: [test.db] sleeping
+Devices: [Unix-simple-blkdev:test.db(test.db):test.db] waking waiters
+Devices: [test.db] waking
+blkif.close
+register_blkif test.db
+Baardskeerder_mirage.Stores.Blkif.init test.db
+
+iterations = 10000
+value_size = 2000
+starting sets
+	    1000 (4.81)
+	    2000 (10.21)
+	    3000 (16.87)
+	    4000 (23.71)
+	    5000 (30.57)
+	    6000 (37.41)
+	    7000 (44.28)
+	    8000 (50.95)
+	    9000 (58.45)
+	   10000 (66.65)
+sets: 66.649123s (burned = 1.732463e+09)
+starting gets
+	    1000 (7.02)
+	    2000 (13.99)
+	    3000 (21.06)
+	    4000 (27.96)
+	    5000 (35.00)
+	    6000 (41.92)
+	    7000 (48.78)
+	    8000 (55.75)
+	    9000 (62.68)
+	   10000 (69.55)
+gets: 69.550193s (burned = 1.534401e+09)
+starting deletes
+	    1000 (7.40)
+	    2000 (14.74)
+	    3000 (22.17)
+	    4000 (29.59)
+	    5000 (36.88)
+	    6000 (44.26)
+	    7000 (51.66)
+	    8000 (58.54)
+	    9000 (65.12)
+	   10000 (71.06)
+deletes: 71.056950s (burned = 1.779318e+09)
+starting set_tx (tx_size=100)
+	    1000 (0.36)
+	    2000 (0.75)
+	    3000 (1.15)
+	    4000 (1.56)
+	    5000 (1.94)
+	    6000 (2.33)
+	    7000 (2.74)
+	    8000 (3.14)
+	    9000 (3.56)
+	   10000 (3.97)
+sets_tx: 3.973788s (burned = 3.330878e+08)
+blkif.close
+Using:Sync
+Fatal error: exception Failure("test.db already exists")
+Using:Lwt
+Fatal error: exception Failure("test.db already exists")
+Using:Sync
+
+iterations = 10000
+value_size = 2000
+starting sets
+	    1000 (0.07)
+	    2000 (0.12)
+	    3000 (0.18)
+	    4000 (0.24)
+	    5000 (0.29)
+	    6000 (0.35)
+	    7000 (0.40)
+	    8000 (0.46)
+	    9000 (0.51)
+	   10000 (0.57)
+sets: 0.858521s (burned = 4.286925e+08)
+starting gets
+	    1000 (0.05)
+	    2000 (0.08)
+	    3000 (0.11)
+	    4000 (0.14)
+	    5000 (0.17)
+	    6000 (0.20)
+	    7000 (0.23)
+	    8000 (0.26)
+	    9000 (0.29)
+	   10000 (0.32)
+gets: 0.317971s (burned = 2.003468e+08)
+starting deletes
+	    1000 (0.05)
+	    2000 (0.11)
+	    3000 (0.15)
+	    4000 (0.20)
+	    5000 (0.25)
+	    6000 (0.29)
+	    7000 (0.34)
+	    8000 (0.39)
+	    9000 (0.43)
+	   10000 (0.47)
+deletes: 0.534365s (burned = 3.655791e+08)
+starting set_tx (tx_size=100)
+	    1000 (0.05)
+	    2000 (0.08)
+	    3000 (0.12)
+	    4000 (0.15)
+	    5000 (0.19)
+	    6000 (0.22)
+	    7000 (0.26)
+	    8000 (0.29)
+	    9000 (0.33)
+	   10000 (0.36)
+sets_tx: 0.629621s (burned = 2.643224e+08)
+Using:Lwt
+
+iterations = 10000
+value_size = 2000
+starting sets
+	    1000 (0.20)
+	    2000 (0.48)
+	    3000 (0.77)
+	    4000 (1.06)
+	    5000 (1.34)
+	    6000 (1.62)
+	    7000 (1.88)
+	    8000 (2.19)
+	    9000 (2.47)
+	   10000 (2.78)
+sets: 3.023213s (burned = 5.093222e+08)
+starting gets
+	    1000 (0.06)
+	    2000 (0.11)
+	    3000 (0.16)
+	    4000 (0.21)
+	    5000 (0.26)
+	    6000 (0.32)
+	    7000 (0.37)
+	    8000 (0.42)
+	    9000 (0.47)
+	   10000 (0.53)
+gets: 0.527613s (burned = 2.697883e+08)
+starting deletes
+	    1000 (0.27)
+	    2000 (0.56)
+	    3000 (0.83)
+	    4000 (1.14)
+	    5000 (1.44)
+	    6000 (1.74)
+	    7000 (2.02)
+	    8000 (2.31)
+	    9000 (2.57)
+	   10000 (2.83)
+deletes: 2.917272s (burned = 4.577589e+08)
+starting set_tx (tx_size=100)
+	    1000 (0.05)
+	    2000 (0.08)
+	    3000 (0.12)
+	    4000 (0.16)
+	    5000 (0.20)
+	    6000 (0.24)
+	    7000 (0.28)
+	    8000 (0.32)
+	    9000 (0.36)
+	   10000 (0.41)
+sets_tx: 0.645190s (burned = 2.679887e+08)
+Using:Memory
+
+iterations = 10000
+value_size = 2000
+starting sets
+	    1000 (2.83)
+	    2000 (7.10)
+	    3000 (13.40)
+	    4000 (24.10)
+	    5000 (34.39)
+	    6000 (47.03)
+	    7000 (64.13)
+	    8000 (94.66)
+	    9000 (127.21)
+	   10000 (159.09)
+sets: 159.093136s (burned = 4.170495e+11)
+starting gets
+	    1000 (0.01)
+	    2000 (0.01)
+	    3000 (0.02)
+	    4000 (0.03)
+	    5000 (0.03)
+	    6000 (0.04)
+	    7000 (0.04)
+	    8000 (0.05)
+	    9000 (0.06)
+	   10000 (0.06)
+gets: 0.063198s (burned = 2.003467e+08)
+starting deletes
+	    1000 (44.98)
+	    2000 (90.88)
+	    3000 (135.26)
+	    4000 (172.99)
+	    5000 (210.92)
+	    6000 (249.77)
+	    7000 (306.35)
+	    8000 (367.52)
+	    9000 (431.21)
+	   10000 (494.47)
+deletes: 494.470296s (burned = 8.618105e+11)
+starting set_tx (tx_size=100)
+	    1000 (0.68)
+	    2000 (1.77)
+	    3000 (3.16)
+	    4000 (3.77)
+	    5000 (4.41)
+	    6000 (5.12)
+	    7000 (6.04)
+	    8000 (6.81)
+	    9000 (7.60)
+	   10000 (8.44)
+sets_tx: 8.440625s (burned = 1.418876e+10)
+
+=====================================================
+re-written Memory.write 
+
+Using:Memory
+
+iterations = 10000
+value_size = 2000
+starting sets
+	    1000 (0.05)
+	    2000 (0.07)
+	    3000 (0.11)
+	    4000 (0.14)
+	    5000 (0.19)
+	    6000 (0.21)
+	    7000 (0.23)
+	    8000 (0.34)
+	    9000 (0.37)
+	   10000 (0.39)
+sets: 0.390318s (burned = 4.957936e+08)
+starting gets
+	    1000 (0.01)
+	    2000 (0.01)
+	    3000 (0.02)
+	    4000 (0.03)
+	    5000 (0.03)
+	    6000 (0.04)
+	    7000 (0.05)
+	    8000 (0.06)
+	    9000 (0.06)
+	   10000 (0.07)
+gets: 0.069323s (burned = 2.003469e+08)
+starting deletes
+	    1000 (0.02)
+	    2000 (0.03)
+	    3000 (0.05)
+	    4000 (0.07)
+	    5000 (0.08)
+	    6000 (0.10)
+	    7000 (0.11)
+	    8000 (0.13)
+	    9000 (0.14)
+	   10000 (0.16)
+deletes: 0.159439s (burned = 3.655796e+08)
+starting set_tx (tx_size=100)
+	    1000 (0.02)
+	    2000 (0.04)
+	    3000 (0.11)
+	    4000 (0.20)
+	    5000 (0.23)
+	    6000 (0.27)
+	    7000 (0.29)
+	    8000 (0.32)
+	    9000 (0.34)
+	   10000 (0.36)
+sets_tx: 0.361879s (burned = 3.314313e+08)
+
+
+With 3-slot block cache
+
+Using:Blkif
+register_blkif test.db
+create file test.db
+add_provider test.db
+run Mirage main
+Devices: [Unix-simple-blkdev:test.db(test.db)] provider start
+Devices: [Unix-simple-blkdev:test.db(test.db):test.db] provider plug
+create blkdev test.db file test.db
+Baardskeerder_mirage.Stores.Blkif.init test.db
+Devices: [test.db] sleeping
+Devices: [Unix-simple-blkdev:test.db(test.db):test.db] waking waiters
+Devices: [test.db] waking
+blkif.close
+Exception! Failure("test.db already exists")
+Using:Blkif
+register_blkif test.db
+create file test.db
+add_provider test.db
+run Mirage main
+Devices: [Unix-simple-blkdev:test.db(test.db)] provider start
+Devices: [Unix-simple-blkdev:test.db(test.db):test.db] provider plug
+create blkdev test.db file test.db
+Baardskeerder_mirage.Stores.Blkif.init test.db
+Devices: [test.db] sleeping
+Devices: [Unix-simple-blkdev:test.db(test.db):test.db] waking waiters
+Devices: [test.db] waking
+blkif.close
+register_blkif test.db
+Baardskeerder_mirage.Stores.Blkif.init test.db
+
+iterations = 10000
+value_size = 2000
+starting sets
+	    1000 (0.85)
+	    2000 (1.81)
+	    3000 (2.81)
+	    4000 (3.78)
+	    5000 (4.80)
+	    6000 (5.80)
+	    7000 (6.82)
+	    8000 (7.84)
+	    9000 (8.87)
+	   10000 (9.88)
+sets: 9.876150s (burned = 1.884887e+09)
+starting gets
+	    1000 (3.07)
+	    2000 (6.25)
+	    3000 (9.45)
+	    4000 (12.78)
+	    5000 (15.58)
+	    6000 (18.15)
+	    7000 (20.89)
+	    8000 (23.68)
+	    9000 (26.14)
+	   10000 (28.34)
+gets: 28.343715s (burned = 2.752859e+09)
+starting deletes
+	    1000 (1.24)
+	    2000 (2.45)
+	    3000 (3.66)
+	    4000 (4.89)
+	    5000 (6.10)
+	    6000 (7.34)
+	    7000 (8.57)
+	    8000 (9.78)
+	    9000 (10.96)
+	   10000 (12.11)
+deletes: 12.108893s (burned = 2.060091e+09)
+starting set_tx (tx_size=100)
+	    1000 (0.30)
+	    2000 (0.60)
+	    3000 (0.91)
+	    4000 (1.21)
+	    5000 (1.53)
+	    6000 (1.84)
+	    7000 (2.15)
+	    8000 (2.46)
+	    9000 (2.79)
+	   10000 (3.12)
+sets_tx: 3.117607s (burned = 3.552276e+08)
+blkif.close
+
+
+WIth 18 slot LRU, highest NOT moved to LRU
+
+Using:Blkif
+Devices: [Unix-simple-blkdev:test.db(test.db)] provider start
+Devices: [Unix-simple-blkdev:test.db(test.db):test.db] provider plug
+create blkdev test.db file test.db
+Baardskeerder_mirage.Stores.Blkif.init test.db
+Devices: [test.db] sleeping
+Devices: [Unix-simple-blkdev:test.db(test.db):test.db] waking waiters
+Devices: [test.db] waking
+blkif.close
+Baardskeerder_mirage.Stores.Blkif.init test.db
+
+iterations = 10000
+value_size = 2000
+starting sets
+	    1000 (0.88)
+	    2000 (1.81)
+	    3000 (2.73)
+	    4000 (3.71)
+	    5000 (4.72)
+	    6000 (5.76)
+	    7000 (6.76)
+	    8000 (7.81)
+	    9000 (8.83)
+	   10000 (9.86)
+sets: 9.864113s (burned = 1.883589e+09)
+starting gets
+	    1000 (3.12)
+	    2000 (6.29)
+	    3000 (9.46)
+	    4000 (12.82)
+	    5000 (15.60)
+	    6000 (18.40)
+	    7000 (21.17)
+	    8000 (23.96)
+	    9000 (26.41)
+	   10000 (28.60)
+gets: 28.595166s (burned = 2.755723e+09)
+starting deletes
+	    1000 (1.21)
+	    2000 (2.44)
+	    3000 (3.66)
+	    4000 (4.90)
+	    5000 (6.11)
+	    6000 (7.35)
+	    7000 (8.57)
+	    8000 (9.77)
+	    9000 (10.97)
+	   10000 (12.12)
+deletes: 12.119890s (burned = 2.060043e+09)
+starting set_tx (tx_size=100)
+	    1000 (0.28)
+	    2000 (0.58)
+	    3000 (0.90)
+	    4000 (1.23)
+	    5000 (1.53)
+	    6000 (1.85)
+	    7000 (2.22)
+	    8000 (2.54)
+	    9000 (2.88)
+	   10000 (3.25)
+sets_tx: 3.250404s (burned = 3.549911e+08)
+blkif.close
+
+With 18 slot LRU, old highest moved to LRU
+
+
+Using:Blkif
+Devices: [Unix-simple-blkdev:test.db(test.db)] provider start
+Devices: [Unix-simple-blkdev:test.db(test.db):test.db] provider plug
+create blkdev test.db file test.db
+Baardskeerder_mirage.Stores.Blkif.init test.db
+Devices: [test.db] sleeping
+Devices: [Unix-simple-blkdev:test.db(test.db):test.db] waking waiters
+Devices: [test.db] waking
+blkif.close
+Baardskeerder_mirage.Stores.Blkif.init test.db
+
+iterations = 10000
+value_size = 2000
+starting sets
+	    1000 (0.84)
+	    2000 (1.78)
+	    3000 (2.75)
+	    4000 (3.72)
+	    5000 (4.71)
+	    6000 (5.65)
+	    7000 (6.65)
+	    8000 (7.66)
+	    9000 (8.67)
+	   10000 (9.64)
+sets: 9.637013s (burned = 1.867917e+09)
+starting gets
+	    1000 (0.49)
+	    2000 (0.98)
+	    3000 (1.46)
+	    4000 (2.22)
+	    5000 (2.74)
+	    6000 (3.26)
+	    7000 (3.78)
+	    8000 (4.33)
+	    9000 (4.88)
+	   10000 (5.42)
+gets: 5.417510s (burned = 1.737709e+09)
+starting deletes
+	    1000 (1.14)
+	    2000 (2.26)
+	    3000 (3.41)
+	    4000 (4.56)
+	    5000 (5.69)
+	    6000 (6.81)
+	    7000 (7.94)
+	    8000 (9.05)
+	    9000 (10.14)
+	   10000 (11.22)
+deletes: 11.217672s (burned = 2.054257e+09)
+starting set_tx (tx_size=100)
+	    1000 (0.30)
+	    2000 (0.61)
+	    3000 (0.93)
+	    4000 (1.25)
+	    5000 (1.57)
+	    6000 (1.87)
+	    7000 (2.18)
+	    8000 (2.50)
+	    9000 (2.82)
+	   10000 (3.15)
+sets_tx: 3.148113s (burned = 3.550151e+08)
+blkif.close
+
+LRU cache size 198
+
+
+
+Using:Blkif
+Devices: [Unix-simple-blkdev:test.db(test.db)] provider start
+Devices: [Unix-simple-blkdev:test.db(test.db):test.db] provider plug
+create blkdev test.db file test.db
+Baardskeerder_mirage.Stores.Blkif.init test.db
+Devices: [test.db] sleeping
+Devices: [Unix-simple-blkdev:test.db(test.db):test.db] waking waiters
+Devices: [test.db] waking
+blkif.close
+Exception! Failure("test.db already exists")
+Using:Blkif
+Devices: [Unix-simple-blkdev:test.db(test.db)] provider start
+Devices: [Unix-simple-blkdev:test.db(test.db):test.db] provider plug
+create blkdev test.db file test.db
+Baardskeerder_mirage.Stores.Blkif.init test.db
+Devices: [test.db] sleeping
+Devices: [Unix-simple-blkdev:test.db(test.db):test.db] waking waiters
+Devices: [test.db] waking
+blkif.close
+Baardskeerder_mirage.Stores.Blkif.init test.db
+
+iterations = 10000
+value_size = 2000
+starting sets
+	    1000 (0.84)
+	    2000 (1.81)
+	    3000 (2.85)
+	    4000 (3.92)
+	    5000 (4.93)
+	    6000 (5.96)
+	    7000 (6.94)
+	    8000 (7.95)
+	    9000 (8.98)
+	   10000 (9.98)
+sets: 9.978844s (burned = 1.867669e+09)
+starting gets
+	    1000 (0.35)
+	    2000 (0.72)
+	    3000 (1.06)
+	    4000 (1.46)
+	    5000 (1.85)
+	    6000 (2.24)
+	    7000 (2.63)
+	    8000 (3.01)
+	    9000 (3.40)
+	   10000 (3.80)
+gets: 3.796776s (burned = 2.014281e+09)
+starting deletes
+	    1000 (1.02)
+	    2000 (2.04)
+	    3000 (3.05)
+	    4000 (4.08)
+	    5000 (5.08)
+	    6000 (6.11)
+	    7000 (7.03)
+	    8000 (8.05)
+	    9000 (9.06)
+	   10000 (10.04)
+deletes: 10.035965s (burned = 1.973447e+09)
+starting set_tx (tx_size=100)
+	    1000 (0.30)
+	    2000 (0.60)
+	    3000 (0.92)
+	    4000 (1.24)
+	    5000 (1.56)
+	    6000 (1.87)
+	    7000 (2.19)
+	    8000 (2.50)
+	    9000 (2.83)
+	   10000 (3.15)
+sets_tx: 3.146743s (burned = 3.550064e+08)
+blkif.close
+
+Cache size 2000
+
+Using:Blkif
+Devices: [Unix-simple-blkdev:test.db(test.db)] provider start
+Devices: [Unix-simple-blkdev:test.db(test.db):test.db] provider plug
+create blkdev test.db file test.db
+Baardskeerder_mirage.Stores.Blkif.init test.db
+Devices: [test.db] sleeping
+Devices: [Unix-simple-blkdev:test.db(test.db):test.db] waking waiters
+Devices: [test.db] waking
+blkif.close
+Baardskeerder_mirage.Stores.Blkif.init test.db
+
+iterations = 10000
+value_size = 2000
+starting sets
+	    1000 (0.94)
+	    2000 (2.01)
+	    3000 (3.15)
+	    4000 (4.29)
+	    5000 (5.42)
+	    6000 (6.62)
+	    7000 (7.81)
+	    8000 (8.92)
+	    9000 (10.08)
+	   10000 (11.30)
+sets: 11.304365s (burned = 1.867739e+09)
+starting gets
+	    1000 (0.51)
+	    2000 (1.05)
+	    3000 (1.62)
+	    4000 (2.22)
+	    5000 (2.84)
+	    6000 (3.47)
+	    7000 (4.13)
+	    8000 (4.76)
+	    9000 (5.44)
+	   10000 (6.16)
+gets: 6.156539s (burned = 5.276861e+09)
+starting deletes
+	    1000 (1.14)
+	    2000 (2.34)
+	    3000 (3.50)
+	    4000 (4.65)
+	    5000 (5.48)
+	    6000 (6.43)
+	    7000 (7.44)
+	    8000 (8.54)
+	    9000 (9.66)
+	   10000 (10.73)
+deletes: 10.725487s (burned = 1.964659e+09)
+starting set_tx (tx_size=100)
+	    1000 (0.31)
+	    2000 (0.62)
+	    3000 (0.94)
+	    4000 (1.28)
+	    5000 (1.60)
+	    6000 (1.93)
+	    7000 (2.25)
+	    8000 (2.57)
+	    9000 (2.90)
+	   10000 (3.25)
+sets_tx: 3.245963s (burned = 3.548195e+08)
+blkif.close
+
+
+50 slots, ?fixed LRU algorithm
+
+Using:Blkif
+Devices: [Unix-simple-blkdev:test.db(test.db)] provider start
+Devices: [Unix-simple-blkdev:test.db(test.db):test.db] provider plug
+create blkdev test.db file test.db
+Baardskeerder_mirage.Stores.Blkif.init test.db
+Devices: [test.db] sleeping
+Devices: [Unix-simple-blkdev:test.db(test.db):test.db] waking waiters
+Devices: [test.db] waking
+blkif.close
+Baardskeerder_mirage.Stores.Blkif.init test.db
+
+iterations = 10000
+value_size = 2000
+starting sets
+	    1000 (0.94)
+	    2000 (1.92)
+	    3000 (2.89)
+	    4000 (3.85)
+	    5000 (4.81)
+	    6000 (5.80)
+	    7000 (6.75)
+	    8000 (7.72)
+	    9000 (8.73)
+	   10000 (9.72)
+sets: 9.716091s (burned = 1.875799e+09)
+starting gets
+	    1000 (0.35)
+	    2000 (0.69)
+	    3000 (1.04)
+	    4000 (1.39)
+	    5000 (1.76)
+	    6000 (2.15)
+	    7000 (2.54)
+	    8000 (2.93)
+	    9000 (3.33)
+	   10000 (3.72)
+gets: 3.718123s (burned = 1.725543e+09)
+starting deletes
+	    1000 (0.96)
+	    2000 (1.92)
+	    3000 (2.89)
+	    4000 (3.85)
+	    5000 (4.80)
+	    6000 (5.76)
+	    7000 (6.73)
+	    8000 (7.71)
+	    9000 (8.66)
+	   10000 (9.61)
+deletes: 9.610669s (burned = 1.973790e+09)
+starting set_tx (tx_size=100)
+	    1000 (0.28)
+	    2000 (0.59)
+	    3000 (0.89)
+	    4000 (1.21)
+	    5000 (1.53)
+	    6000 (1.84)
+	    7000 (2.15)
+	    8000 (2.48)
+	    9000 (2.81)
+	   10000 (3.13)
+sets_tx: 3.133475s (burned = 3.552360e+08)
+blkif.close
+
+Hash cache 200
+
+
+
+Using:Blkif
+Devices: [Unix-simple-blkdev:test.db(test.db)] provider start
+Devices: [Unix-simple-blkdev:test.db(test.db):test.db] provider plug
+create blkdev test.db file test.db
+Baardskeerder_mirage.Stores.Blkif.init test.db
+Devices: [test.db] sleeping
+Devices: [Unix-simple-blkdev:test.db(test.db):test.db] waking waiters
+Devices: [test.db] waking
+blkif.close
+Baardskeerder_mirage.Stores.Blkif.init test.db
+
+iterations = 10000
+value_size = 2000
+starting sets
+	    1000 (0.96)
+	    2000 (2.08)
+	    3000 (3.28)
+	    4000 (4.52)
+	    5000 (5.74)
+	    6000 (6.99)
+	    7000 (8.23)
+	    8000 (9.43)
+	    9000 (10.70)
+	   10000 (11.97)
+sets: 11.968165s (burned = 1.861779e+09)
+starting gets
+	    1000 (0.18)
+	    2000 (0.35)
+	    3000 (0.52)
+	    4000 (0.69)
+	    5000 (0.86)
+	    6000 (1.03)
+	    7000 (1.20)
+	    8000 (1.37)
+	    9000 (1.54)
+	   10000 (1.71)
+gets: 1.708483s (burned = 1.508317e+09)
+starting deletes
+	    1000 (0.88)
+	    2000 (1.76)
+	    3000 (2.61)
+	    4000 (3.47)
+	    5000 (4.30)
+	    6000 (5.12)
+	    7000 (5.97)
+	    8000 (6.80)
+	    9000 (7.63)
+	   10000 (8.43)
+deletes: 8.433531s (burned = 1.807710e+09)
+starting set_tx (tx_size=100)
+	    1000 (0.33)
+	    2000 (0.68)
+	    3000 (1.02)
+	    4000 (1.36)
+	    5000 (1.69)
+	    6000 (2.03)
+	    7000 (2.36)
+	    8000 (2.71)
+	    9000 (3.04)
+	   10000 (3.40)
+sets_tx: 3.396395s (burned = 3.549948e+08)
+blkif.close

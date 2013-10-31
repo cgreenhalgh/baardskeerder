@@ -4,13 +4,22 @@ Baardskeerder
 
 This fork is intended for a variant of Baardskeerder to run on 
 Mirage_. The persistent back-end
-is intended to be a Mirage OS.Devices.blkif and an API facade is intended to 
-provide a mutable key-value API analogous to OS.Devices.kv_ro. 
+is intended to be a Mirage OS.Devices.blkif.
 
 Status is implemented basic store over blkif in src/blkif.ml and ported flog0
-log implementation to work with it. There is no cacheing and the store API
-has been narrowed to remove next, append and with_fd. Flog is currently
-disabled awaiting porting.
+log implementation to work with it. There is a page cache which is mainly 
+LRU plus a couple of optimisations (first and last page). The store API
+has been narrowed to remove next, append and with_fd. Performance currently
+seems to be about 4-10 times slower using the Blkif store with a 
+unix-simple-blkdev over a file than using the direct Lwt store.
+
+Platform-independent code is now in the mirage-baardskeerder package while
+Mirage-specific code (including the Blkif store) is in the .mirage sub-
+package and Unix-specific code (including the Flog logger and Sync and
+Lwt stores) are in the .unix sub-package. It should be possible to make
+a platform-independent (or mirage-specific) variant of the Flog logger
+but I haven't yet done do.
+
 
 Baardskeerder is a so-called Copy-on-Write B-tree_ (aka Append-only B-tree),
 a fully-persistent datastructure which can be implemented using nothing but
