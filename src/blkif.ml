@@ -42,7 +42,7 @@ struct
     mutable maxpage : int
   }
 
-  let cachesize = 200
+  let cachesize = 2000
 
   type 'a m = 'a Lwt_.t
   let bind = Lwt_.bind
@@ -80,7 +80,9 @@ struct
 
   (* helper fn - choose cache slot to use/eject *)
   let get_empty_cache_slot ({cache;maxpage;_} as t) pno = 
-    if pno==0 then () 
+    if Hashtbl.mem cache pno then 
+      Hashtbl.remove cache pno
+    else if pno==0 then () 
     else begin
       if pno> maxpage then
         t.maxpage <- pno;
@@ -90,14 +92,18 @@ struct
         if pno!=0 && pno<maxpage then begin
           cnt := !cnt + 1;
           let lp = !lru in 
-          if lp.lru == 0. || page.lru<lp.lru then lru := page
+          if lp.pageno == 0 || page.lru<lp.lru then begin 
+            lru := page;
+            (*debug(Printf.sprintf "---lru so far is %d at %f" page.pageno page.lru)*)
+          end (*else debug (Printf.sprintf "----not lru: %d at %f vs %f" page.pageno page.lru lp.lru)*)
         end
       in Hashtbl.iter checklru cache;
       let ejectpage = (!lru).pageno in
       if ejectpage!=0 && (!cnt)>=cachesize then begin
         debug (Printf.sprintf "--bump page %d from cache as lru (%f)" ejectpage (!lru).lru);
         Hashtbl.remove cache ejectpage
-      end
+      end else 
+        debug (Printf.sprintf "--allowing page %d with no eject (size %d lru %f)" pno (!cnt) (!lru).lru)
     end 
 
   (* helper fn - find page in cache *)
