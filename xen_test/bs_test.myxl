@@ -1,0 +1,4 @@
+name = 'bs-test'
+kernel = 'mir-bs_test.xen'
+disk = ['tap:aio:xen_testfile,sda1,w']
+memory = 256

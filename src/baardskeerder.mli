@@ -132,3 +132,20 @@ sig
   val get_metadata: t -> string option S.m
   val unset_metadata: t -> unit S.m
 end
+
+(* xen benchmarks *)
+
+module DB : functor (L: Log.LOG) ->
+sig
+  val set : L.t -> string -> string -> unit L.m 
+  val _get : L.t -> Slab.t -> string -> (v,k) result L.m
+  val delete : L.t -> Base.k -> (unit, Base.k) Base.result L.m
+end
+module DBX : functor (L: Log.LOG) ->
+sig
+  type tx 
+  val set : tx -> string -> string -> unit L.m 
+  val with_tx : ?inc:(Time.t -> Time.t) -> L.t ->
+           (tx -> ('a, 'b) Base.result L.m) -> ('a, 'b) Base.result L.m
+end
+
