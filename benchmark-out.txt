@@ -852,3 +852,131 @@ starting set_tx (tx_size=100)
 	   10000 (3.42)
 sets_tx: 3.418614s (burned = 3.553809e+08)
 blkif.close
+
+Running on the same VM as mirage on Xen with configuration:
+name = 'bs-test'
+kernel = 'mir-bs_test.xen'
+disk = ['tap:aio:xen_testfile,sda1,w']
+memory = 256
+
+
+Parsing config from bs_test.myxl
+Daemon running with PID 25904
+kernel.c: Mirage OS!
+kernel.c:   start_info: 0x11bd000(VA)
+kernel.c:     nr_pages: 0x10000
+kernel.c:   shared_inf: 0xa2f39000(MA)
+kernel.c:      pt_base: 0x11c0000(VA)
+kernel.c: nr_pt_frames: 0xd
+kernel.c:     mfn_list: 0x113d000(VA)
+kernel.c:    mod_start: 0x0(VA)
+kernel.c:      mod_len: 0
+kernel.c:        flags: 0x0
+kernel.c:     cmd_line: 
+x86_setup.c:   stack:      0x134f20-0x934f20
+mm.c: MM: Init
+x86_mm.c:       _text: 0x0(VA)
+x86_mm.c:      _etext: 0xaee8c(VA)
+x86_mm.c:    _erodata: 0xd6000(VA)
+x86_mm.c:      _edata: 0x124690(VA)
+x86_mm.c: stack start: 0x134f20(VA)
+x86_mm.c:        _end: 0x113d000(VA)
+x86_mm.c:   start_pfn: 11d0
+x86_mm.c:     max_pfn: 10000
+x86_mm.c: Mapping memory range 0x1400000 - 0x10000000
+x86_mm.c: setting 0x0-0xd6000 readonly
+x86_mm.c: skipped 0x1000
+mm.c: MM: Initialise page allocator for 0x1246000 -> 0x10000000
+mm.c: MM: done
+x86_mm.c: Pages to allocate for p2m map: 2
+x86_mm.c: Used 2 pages for map
+x86_mm.c: Demand map pfns at 10001000-2010001000.
+Initialising timer interface
+gnttab_init: 2047
+Netif: add resume hook
+Blkif: add resume hook
+hello
+Xen.Blkfront.register
+Devices: [Xen.Blkif] provider start
+Blkif.enumerate found ids [ 2049 ]
+found VBD with id: 2049
+Devices: [Xen.Blkif:2049] provider plug
+Xen.Blkif: create 2049
+Blkfront.create; vdev=2049
+Blkback can only use a single-page ring
+Negotiated a singe-page ring
+Blkfront ring Blkif.2049 header_size = 64; index slot size = 112; number of entries = 32
+state=Connected
+Blkfront features: barrier=false removable=false sector_size=512 sectors=200000
+Xen.Blkif: success
+Devices: [Xen.Blkif:2049] no waiters
+found 2049
+try to open 2049
+Using:Blkif
+
+Baardskeerder_mirage.Stores.Blkif.init 2049
+blkif.close
+Baardskeerder_mirage.Stores.Blkif.init 2049
+
+iterations = 10000
+                  value_size = 2000
+
+starting sets
+
+	    1000 (1.83)
+	    2000 (3.73)
+	    3000 (5.72)
+	    4000 (7.76)
+	    5000 (9.77)
+	    6000 (11.80)
+	    7000 (13.78)
+	    8000 (15.78)
+	    9000 (17.82)
+	   10000 (19.89)
+sets: 19.889553s (burned = )
+
+starting gets
+
+	    1000 (1.01)
+	    2000 (2.07)
+	    3000 (3.11)
+	    4000 (4.18)
+	    5000 (5.23)
+	    6000 (6.31)
+	    7000 (7.37)
+	    8000 (8.44)
+	    9000 (9.51)
+	   10000 (10.54)
+gets: 10.540636s (burned = )
+
+starting deletes
+
+	    1000 (1.89)
+	    2000 (3.97)
+	    3000 (5.86)
+	    4000 (7.73)
+	    5000 (9.63)
+	    6000 (11.47)
+	    7000 (13.34)
+	    8000 (15.16)
+	    9000 (17.03)
+	   10000 (18.73)
+deletes: 18.727162s (burned = )
+
+starting set_tx (tx_size=100)
+
+	    1000 (0.40)
+	    2000 (0.78)
+	    3000 (1.19)
+	    4000 (1.63)
+	    5000 (2.04)
+	    6000 (2.45)
+	    7000 (2.86)
+	    8000 (3.26)
+	    9000 (3.69)
+	   10000 (4.10)
+sets_tx: 4.098851s (burned = )
+
+blkif.close
+main returned 0
+

@@ -17,9 +17,14 @@
  * along with Baardskeerder.  If not, see <http://www.gnu.org/licenses/>.
  *)
 
+type k = string
+type v = string
+type ('a,'b) result = | OK of 'a | NOK of 'b
+
 
 module Stores =
 struct
   module Blkif = Blkif.Store
 end
+
 

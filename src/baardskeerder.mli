@@ -133,19 +133,15 @@ sig
   val unset_metadata: t -> unit S.m
 end
 
-(* xen benchmarks *)
-
-module DB : functor (L: Log.LOG) ->
+module Bench : functor (LF: functor(S: Bs_internal.STORE) -> Log.LOG with type 'a m = 'a S.m) ->
+    functor (S: Bs_internal.STORE) ->
 sig
-  val set : L.t -> string -> string -> unit L.m 
-  val _get : L.t -> Slab.t -> string -> (v,k) result L.m
-  val delete : L.t -> Base.k -> (unit, Base.k) Base.result L.m
-end
-module DBX : functor (L: Log.LOG) ->
-sig
-  type tx 
-  val set : tx -> string -> string -> unit L.m 
-  val with_tx : ?inc:(Time.t -> Time.t) -> L.t ->
-           (tx -> ('a, 'b) Base.result L.m) -> ('a, 'b) Base.result L.m
+  module MyLog : Log.LOG with type 'a m = 'a S.m
+  val init : ?d:int -> string -> unit S.m
+  type progress_callback = int -> unit
+  val set_loop : MyLog.t -> int -> int -> progress_callback -> unit S.m
+  val get_loop : MyLog.t -> int -> progress_callback -> unit S.m
+  val delete_loop : MyLog.t -> int -> progress_callback -> unit S.m
+  val set_tx_loop : MyLog.t -> int -> int -> int -> progress_callback -> unit S.m
 end
 

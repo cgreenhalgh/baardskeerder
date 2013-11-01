@@ -17,92 +17,15 @@ let init_xen () =
 
 (* mirage Baardseerker type *)
 open Baardskeerder
+module MyBench = Bench(Logs.Flog0)(Baardskeerder_mirage.Stores.Blkif)
+module MyLog = MyBench.MyLog
+open MyBench
 open Lwt 
-
-module MyLog = Logs.Flog0(Baardskeerder_mirage.Stores.Blkif) 
-module MyDB = DB(MyLog)
-module MyDBX = DBX(MyLog)
 
 let vs = ref 2000
 let n  = ref 10_000 
 let m  = ref 100 
-
-
-(* benchmarks tasks from bsmgr.ml *)
-  let set_loop db vs n (cb: progress_callback) =
-    let v = String.make vs 'x' in
-    let set k v = MyDB.set db k v in
-    let rec loop i =
-      let () = cb i in
-      if i = n
-      then MyLog.sync db
-      else
-        let key = make_key i in
-        set key v >>= fun () ->
-        loop (i+1)
-    in
-    loop 0
-  
-
-  let get_loop db n (cb: progress_callback) =
-    let now = MyLog.now db in
-    let empty = Slab.make now in
-    let get k = MyDB._get db empty k in
-    let rec loop i =
-      let () = cb i in
-      if i = n
-      then return ()
-      else
-        let key = make_key i in
-        get key >>= fun v ->
-        loop (i+1)
-    in
-    loop 0
-  
-
-  let delete_loop db n (cb: progress_callback) =
-    let delete k = MyDB.delete db k in
-    let rec loop i =
-      let () = cb i in
-      if i = n
-      then MyLog.sync db
-      else
-        let key = make_key i in
-        delete key >>= function
-        | Base.OK () -> loop (i+1)
-        | Base.NOK k -> failwith (Printf.sprintf "%s not found" k)
-    in
-    loop 0
-  
-
-  let set_tx_loop db vs m n (cb: progress_callback)=
-    let v = String.make vs 'x' in
-    let set_tx b =
-      let f tx =
-        let rec loop i =
-          let kn = b+ i in
-          if i = m || kn >= n
-          then return (Base.OK ())
-          else
-            let k = make_key kn in
-            MyDBX.set tx k v >>= fun () ->
-            loop (i+1)
-        in
-        loop 0
-      in
-      MyDBX.with_tx db f
-    in
-    let rec loop i =
-      let () = cb i in
-      if i >= n
-      then MyLog.sync db
-      else
-        set_tx i >>= function
-        | Base.OK () -> loop (i+m)
-        | Base.NOK k -> failwith (Printf.sprintf "NOK %s" k)
-    in
-    loop 0
-
+let d = ref 4
 
 let main () =
   OS.Console.log "hello" ;
@@ -132,7 +55,7 @@ let main () =
           return (dt,da)
         in
           OS.Console.log (Printf.sprintf "Using:%s\n%!" "Blkif") ;
-          MyLog.init name ~d:!d Time.zero >>= fun () ->
+          init ~d:!d name >>= fun () ->
           MyLog.make name >>= fun db ->
           let () = OS.Console.log(Printf.sprintf "\niterations = %i\nvalue_size = %i\n%!" !n !vs) in
           let () = OS.Console.log(Printf.sprintf "starting sets\n") in
@@ -146,7 +69,7 @@ let main () =
           OS.Console.log(Printf.sprintf "deletes: %fs (burned = %e)\n%!" dt3 da3);
           let () = OS.Console.log(Printf.sprintf "starting set_tx (tx_size=%i)\n" !m) in
           measure !n (fun () -> set_tx_loop db !vs !m) >>= fun (dt4,da4) ->
-          OS.Console.log(Printf.printf "sets_tx: %fs (burned = %e)\n%!" dt4 da4);
+          OS.Console.log(Printf.sprintf "sets_tx: %fs (burned = %e)\n%!" dt4 da4);
           MyLog.close db >>= fun () ->
           return ()
 

@@ -89,10 +89,8 @@ struct
   let unset_metadata t = L.unset_metadata t
 end
 
-(* xen benchmarks *)
-module type LOG = Log.LOG
-module DB = Tree.DB
-module DBX = Dbx.DBX
+(* benchmark *)
+module Bench = Bench.Bench
 
 (* warning - transient implementation! *)
 module SB = Baardskeerder(Logs.Flog0)(Stores.Memory)
